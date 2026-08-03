@@ -1,6 +1,84 @@
-export const demoLeaders=[
-{id:'a1',fullName:'Aarav Sharma',preferredName:'Aarav',email:'aarav@moreyeahs.com',department:'Engineering',jobTitle:'Director of Engineering',experienceYearsEstimate:14,leadershipBracketRaw:'6-10 years',skills:[['Cloud Architecture','EXPERT'],['Azure','EXPERT'],['TypeScript','PRACTITIONER'],['AI Strategy','PRACTITIONER']],projects:3,certs:2,updatedAt:'2026-07-18'},
-{id:'a2',fullName:'Meera Iyer',preferredName:'Meera',email:'meera@moreyeahs.in',department:'Data & AI',jobTitle:'Head of Data',experienceYearsEstimate:12,leadershipBracketRaw:'6-10 years',skills:[['Power BI','EXPERT'],['Data Engineering','EXPERT'],['Azure','PRACTITIONER'],['AI Strategy','EXPERT']],projects:5,certs:3,updatedAt:'2026-06-29'},
-{id:'a3',fullName:'Kabir Singh',preferredName:'Kabir',email:'kabir@moreyeahs.com',department:'Business Apps',jobTitle:'Solution Architect',experienceYearsEstimate:10,leadershipBracketRaw:'3-5 years',skills:[['Microsoft Dynamics 365','EXPERT'],['Power Platform','EXPERT'],['Azure','WORKING']],projects:4,certs:4,updatedAt:'2026-05-11'},
-{id:'a4',fullName:'Nisha Verma',preferredName:'Nisha',email:'nisha@moreyeahs.in',department:'Delivery',jobTitle:'VP Delivery',experienceYearsEstimate:16,leadershipBracketRaw:'10+ years',skills:[['Program Management','EXPERT'],['Agile Delivery','EXPERT'],['Cloud Architecture','WORKING']],projects:6,certs:1,updatedAt:'2026-04-02'}];
-export const allSkills=[...new Set(demoLeaders.flatMap(l=>l.skills.map(s=>s[0])))];
+export type DemoSkill = readonly [
+  string,
+  number,
+  'self_rated' | 'inferred' | 'demo',
+];
+export const demoLeaders = [
+  {
+    id: 'a1',
+    fullName: 'Aarav Sharma',
+    preferredName: 'Aarav',
+    email: 'aarav@moreyeahs.com',
+    department: 'Engineering',
+    jobTitle: 'Director of Engineering',
+    experienceYearsEstimate: 14,
+    leadershipBracketRaw: '6-10 years',
+    skills: [
+      ['Cloud Architecture', 5, 'demo'],
+      ['Azure', 5, 'demo'],
+      ['TypeScript', 3, 'demo'],
+      ['AI Strategy', 3, 'demo'],
+    ] as readonly DemoSkill[],
+    projects: 3,
+    certs: 2,
+    updatedAt: '2026-07-18',
+  },
+  {
+    id: 'a2',
+    fullName: 'Meera Iyer',
+    preferredName: 'Meera',
+    email: 'meera@moreyeahs.in',
+    department: 'Data & AI',
+    jobTitle: 'Head of Data',
+    experienceYearsEstimate: 12,
+    leadershipBracketRaw: '6-10 years',
+    skills: [
+      ['Power BI', 5, 'demo'],
+      ['Data Engineering', 5, 'demo'],
+      ['Azure', 3, 'demo'],
+      ['AI Strategy', 5, 'demo'],
+    ] as readonly DemoSkill[],
+    projects: 5,
+    certs: 3,
+    updatedAt: '2026-06-29',
+  },
+  {
+    id: 'a3',
+    fullName: 'Kabir Singh',
+    preferredName: 'Kabir',
+    email: 'kabir@moreyeahs.com',
+    department: 'Business Apps',
+    jobTitle: 'Solution Architect',
+    experienceYearsEstimate: 10,
+    leadershipBracketRaw: '3-5 years',
+    skills: [
+      ['Microsoft Dynamics 365', 5, 'demo'],
+      ['Power Platform', 5, 'demo'],
+      ['Azure', 2, 'demo'],
+    ] as readonly DemoSkill[],
+    projects: 4,
+    certs: 4,
+    updatedAt: '2026-05-11',
+  },
+  {
+    id: 'a4',
+    fullName: 'Nisha Verma',
+    preferredName: 'Nisha',
+    email: 'nisha@moreyeahs.in',
+    department: 'Delivery',
+    jobTitle: 'VP Delivery',
+    experienceYearsEstimate: 16,
+    leadershipBracketRaw: '10+ years',
+    skills: [
+      ['Program Management', 5, 'demo'],
+      ['Agile Delivery', 5, 'demo'],
+      ['Cloud Architecture', 2, 'demo'],
+    ] as readonly DemoSkill[],
+    projects: 6,
+    certs: 1,
+    updatedAt: '2026-04-02',
+  },
+];
+export const allSkills = [
+  ...new Set(demoLeaders.flatMap((l) => l.skills.map((s) => s[0]))),
+];

@@ -1,2 +1,14 @@
-import { describe,expect,it } from 'vitest';import { leaderInput } from '@/lib/validation';
-describe('leader API validation',()=>{it('accepts multiple company email domains',()=>{for(const email of ['a@moreyeahs.in','b@moreyeahs.com'])expect(leaderInput.safeParse({fullName:'Test Leader',email}).success).toBe(true)});it('rejects invalid data',()=>expect(leaderInput.safeParse({fullName:'x',email:'bad'}).success).toBe(false))});
+import { describe, expect, it } from 'vitest';
+import { leaderInput } from '@/lib/validation';
+describe('leader API validation', () => {
+  it('accepts multiple company email domains', () => {
+    for (const email of ['a@moreyeahs.in', 'b@moreyeahs.com'])
+      expect(
+        leaderInput.safeParse({ fullName: 'Test Leader', email }).success,
+      ).toBe(true);
+  });
+  it('rejects invalid data', () =>
+    expect(leaderInput.safeParse({ fullName: 'x', email: 'bad' }).success).toBe(
+      false,
+    ));
+});

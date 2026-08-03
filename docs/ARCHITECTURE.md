@@ -13,6 +13,8 @@ The portal is a Next.js 14 App Router application with server-rendered discovery
 
 Audit records capture before/after changes. Optimistic concurrency uses `updatedAt` and returns HTTP 409 for stale writes. Quarterly snapshots remain local even after delivery to the KPI portal. Docker Compose supplies the app and PostgreSQL; CI verifies generation, lint, tests, and production build.
 
+Skill proficiency is an integer from 1 (Novice) through 5 (Expert), enforced by API validation and database checks. `ratingSource` is required: wizard writes are `self_rated`, tag-derived imports are `inferred`, and seeded showcase records are `demo`. L&D gap decisions exclude non-self-rated values by default and label explicitly included inferred gaps as advisory.
+
 ## External boundaries
 
 Entra ID, Anthropic, L&D, KPI, email, and Teams configuration enter through environment variables. No production credential is committed. The deterministic extraction path keeps development and tests operational without paid API access.

@@ -1,3 +1,107 @@
 'use client';
-import Link from 'next/link';import { useMemo,useState } from 'react';import { Search,SlidersHorizontal } from 'lucide-react';import { PageHeader } from '@/components/ui';import { demoLeaders } from '@/lib/demo';
-export default function Directory(){const [q,setQ]=useState('');const [dept,setDept]=useState('All');const rows=useMemo(()=>demoLeaders.filter(l=>(dept==='All'||l.department===dept)&&`${l.fullName} ${l.jobTitle} ${l.skills.flat().join(' ')}`.toLowerCase().includes(q.toLowerCase())),[q,dept]);return <><PageHeader eyebrow="People & expertise" title="Leader directory" description="Find the right leader by capability, experience, or business area."/><div className="p-6 lg:p-10"><div className="card mb-6 flex flex-col gap-3 p-4 md:flex-row"><label className="relative flex-1"><Search className="absolute left-4 top-3.5 text-ink/35" size={18}/><input aria-label="Search leaders" value={q} onChange={e=>setQ(e.target.value)} className="input pl-11" placeholder="Search people, skills, or roles…"/></label><label className="relative"><SlidersHorizontal className="absolute left-4 top-3.5 text-ink/35" size={18}/><select aria-label="Department" className="input pl-11" value={dept} onChange={e=>setDept(e.target.value)}><option>All</option>{[...new Set(demoLeaders.map(l=>l.department))].map(x=><option key={x}>{x}</option>)}</select></label></div><p className="mb-4 text-sm text-ink/50">{rows.length} leaders found</p><div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">{rows.map(l=><Link href={`/directory/${l.id}`} key={l.id} className="card group p-6 transition hover:-translate-y-1 hover:border-moss/40"><div className="flex gap-4"><div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-forest text-lg font-black text-white">{l.fullName.split(' ').map(x=>x[0]).join('')}</div><div><h2 className="text-lg font-bold group-hover:text-moss">{l.fullName}</h2><p className="text-sm text-ink/55">{l.jobTitle}</p><p className="mt-1 text-xs font-semibold text-moss">{l.department}</p></div></div><div className="my-5 h-px bg-forest/10"/><div className="flex flex-wrap gap-2">{l.skills.slice(0,4).map(([s,p])=><span key={s} className="pill bg-mint text-forest">{s}<span className="ml-1 opacity-45">· {p[0]}</span></span>)}</div><div className="mt-5 flex gap-5 text-xs text-ink/45"><span><b className="text-ink">{l.experienceYearsEstimate}</b> yrs experience</span><span><b className="text-ink">{l.projects}</b> projects</span></div></Link>)}</div></div></>}
+import Link from 'next/link';
+import { useMemo, useState } from 'react';
+import { Search, SlidersHorizontal } from 'lucide-react';
+import { PageHeader } from '@/components/ui';
+import { demoLeaders } from '@/lib/demo';
+export default function Directory() {
+  const [q, setQ] = useState('');
+  const [dept, setDept] = useState('All');
+  const rows = useMemo(
+    () =>
+      demoLeaders.filter(
+        (l) =>
+          (dept === 'All' || l.department === dept) &&
+          `${l.fullName} ${l.jobTitle} ${l.skills.flat().join(' ')}`
+            .toLowerCase()
+            .includes(q.toLowerCase()),
+      ),
+    [q, dept],
+  );
+  return (
+    <>
+      <PageHeader
+        eyebrow="People & expertise"
+        title="Leader directory"
+        description="Find the right leader by capability, experience, or business area."
+      />
+      <div className="p-6 lg:p-10">
+        <div className="card mb-6 flex flex-col gap-3 p-4 md:flex-row">
+          <label className="relative flex-1">
+            <Search className="absolute left-4 top-3.5 text-ink/35" size={18} />
+            <input
+              aria-label="Search leaders"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              className="input pl-11"
+              placeholder="Search people, skills, or roles…"
+            />
+          </label>
+          <label className="relative">
+            <SlidersHorizontal
+              className="absolute left-4 top-3.5 text-ink/35"
+              size={18}
+            />
+            <select
+              aria-label="Department"
+              className="input pl-11"
+              value={dept}
+              onChange={(e) => setDept(e.target.value)}
+            >
+              <option>All</option>
+              {[...new Set(demoLeaders.map((l) => l.department))].map((x) => (
+                <option key={x}>{x}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <p className="mb-4 text-sm text-ink/50">{rows.length} leaders found</p>
+        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+          {rows.map((l) => (
+            <Link
+              href={`/directory/${l.id}`}
+              key={l.id}
+              className="card group p-6 transition hover:-translate-y-1 hover:border-moss/40"
+            >
+              <div className="flex gap-4">
+                <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-forest text-lg font-black text-white">
+                  {l.fullName
+                    .split(' ')
+                    .map((x) => x[0])
+                    .join('')}
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold group-hover:text-moss">
+                    {l.fullName}
+                  </h2>
+                  <p className="text-sm text-ink/55">{l.jobTitle}</p>
+                  <p className="mt-1 text-xs font-semibold text-moss">
+                    {l.department}
+                  </p>
+                </div>
+              </div>
+              <div className="my-5 h-px bg-forest/10" />
+              <div className="flex flex-wrap gap-2">
+                {l.skills.slice(0, 4).map(([s, p]) => (
+                  <span key={s} className="pill bg-mint text-forest">
+                    {s}
+                    <span className="ml-1 opacity-45">· {p}/5</span>
+                  </span>
+                ))}
+              </div>
+              <div className="mt-5 flex gap-5 text-xs text-ink/45">
+                <span>
+                  <b className="text-ink">{l.experienceYearsEstimate}</b> yrs
+                  experience
+                </span>
+                <span>
+                  <b className="text-ink">{l.projects}</b> projects
+                </span>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}

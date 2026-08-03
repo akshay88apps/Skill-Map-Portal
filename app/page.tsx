@@ -1,2 +1,135 @@
-import Link from 'next/link';import { ArrowRight, Sparkles } from 'lucide-react';import { PageHeader,Stat } from '@/components/ui';import { allSkills,demoLeaders } from '@/lib/demo';
-export default function Home(){return <><PageHeader eyebrow="Monday, 3 August" title="Good morning, leader." description="A clear view of your organisation’s expertise, capability gaps, and momentum." action={<Link href="/directory" className="btn">Explore people <ArrowRight size={16} className="ml-2"/></Link>}/><div className="space-y-8 p-6 lg:p-10"><section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><Stat label="Leader profiles" value={demoLeaders.length} detail="86% complete"/><Stat label="Canonical skills" value={allSkills.length} detail="Across 4 categories"/><Stat label="Skills needing review" value={3} detail="AI confidence below 70%"/><Stat label="Quarterly growth" value="+18%" detail="Compared with Q1 2026"/></section><section className="grid gap-6 xl:grid-cols-[1.35fr_.65fr]"><div className="card overflow-hidden"><div className="flex items-center justify-between p-6"><div><p className="text-xs font-bold uppercase tracking-widest text-moss">Capability pulse</p><h2 className="mt-1 text-xl font-bold">Skills across the organisation</h2></div><Link href="/matrix" className="text-sm font-bold text-moss">View matrix →</Link></div><div className="space-y-5 px-6 pb-7">{[['Azure',82],['AI Strategy',68],['Power Platform',61],['Cloud Architecture',55],['Data Engineering',43]].map(([s,n])=><div key={s}><div className="mb-2 flex justify-between text-sm"><span className="font-semibold">{s}</span><span className="text-ink/45">{n}% coverage</span></div><div className="h-2 rounded-full bg-mint"><div className="h-2 rounded-full bg-moss" style={{width:`${n}%`}}/></div></div>)}</div></div><div className="card bg-forest p-7 text-white"><Sparkles className="text-[#9fd9bd]"/><p className="mt-7 text-xs font-bold uppercase tracking-widest text-[#9fd9bd]">Insight of the week</p><h2 className="mt-2 text-2xl font-bold">AI capability is growing, but delivery depth is concentrated.</h2><p className="mt-3 text-sm leading-6 text-white/65">Three leaders hold most expert-level AI skills. Build resilience by pairing them with emerging practitioners.</p><Link href="/analytics" className="mt-7 inline-flex font-bold text-[#9fd9bd]">Open analytics →</Link></div></section><section><div className="mb-4 flex justify-between"><h2 className="text-xl font-bold">Recently updated</h2><Link href="/directory" className="text-sm font-bold text-moss">See everyone</Link></div><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">{demoLeaders.map(l=><Link key={l.id} href={`/directory/${l.id}`} className="card p-5 transition hover:-translate-y-1"><div className="grid h-11 w-11 place-items-center rounded-xl bg-mint font-black text-forest">{l.fullName.split(' ').map(x=>x[0]).join('')}</div><h3 className="mt-4 font-bold">{l.fullName}</h3><p className="text-xs text-ink/50">{l.jobTitle}</p><div className="mt-4 flex flex-wrap gap-1">{l.skills.slice(0,2).map(s=><span className="pill bg-cream text-forest" key={s[0]}>{s[0]}</span>)}</div></Link>)}</div></section></div></>}
+import Link from 'next/link';
+import { ArrowRight, Sparkles } from 'lucide-react';
+import { PageHeader, Stat } from '@/components/ui';
+import { allSkills, demoLeaders } from '@/lib/demo';
+export default function Home() {
+  return (
+    <>
+      <PageHeader
+        eyebrow="Monday, 3 August"
+        title="Good morning, leader."
+        description="A clear view of your organisation’s expertise, capability gaps, and momentum."
+        action={
+          <Link href="/directory" className="btn">
+            Explore people <ArrowRight size={16} className="ml-2" />
+          </Link>
+        }
+      />
+      <div className="space-y-8 p-6 lg:p-10">
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <Stat
+            label="Leader profiles"
+            value={demoLeaders.length}
+            detail="86% complete"
+          />
+          <Stat
+            label="Canonical skills"
+            value={allSkills.length}
+            detail="Across 4 categories"
+          />
+          <Stat
+            label="Skills needing review"
+            value={3}
+            detail="AI confidence below 70%"
+          />
+          <Stat
+            label="Quarterly growth"
+            value="+18%"
+            detail="Compared with Q1 2026"
+          />
+        </section>
+        <section className="grid gap-6 xl:grid-cols-[1.35fr_.65fr]">
+          <div className="card overflow-hidden">
+            <div className="flex items-center justify-between p-6">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-moss">
+                  Capability pulse
+                </p>
+                <h2 className="mt-1 text-xl font-bold">
+                  Skills across the organisation
+                </h2>
+              </div>
+              <Link href="/matrix" className="text-sm font-bold text-moss">
+                View matrix →
+              </Link>
+            </div>
+            <div className="space-y-5 px-6 pb-7">
+              {[
+                ['Azure', 82],
+                ['AI Strategy', 68],
+                ['Power Platform', 61],
+                ['Cloud Architecture', 55],
+                ['Data Engineering', 43],
+              ].map(([s, n]) => (
+                <div key={s}>
+                  <div className="mb-2 flex justify-between text-sm">
+                    <span className="font-semibold">{s}</span>
+                    <span className="text-ink/45">{n}% coverage</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-mint">
+                    <div
+                      className="h-2 rounded-full bg-moss"
+                      style={{ width: `${n}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="card bg-forest p-7 text-white">
+            <Sparkles className="text-[#9fd9bd]" />
+            <p className="mt-7 text-xs font-bold uppercase tracking-widest text-[#9fd9bd]">
+              Insight of the week
+            </p>
+            <h2 className="mt-2 text-2xl font-bold">
+              AI capability is growing, but delivery depth is concentrated.
+            </h2>
+            <p className="mt-3 text-sm leading-6 text-white/65">
+              Three leaders hold most expert-level AI skills. Build resilience
+              by pairing them with emerging practitioners.
+            </p>
+            <Link
+              href="/analytics"
+              className="mt-7 inline-flex font-bold text-[#9fd9bd]"
+            >
+              Open analytics →
+            </Link>
+          </div>
+        </section>
+        <section>
+          <div className="mb-4 flex justify-between">
+            <h2 className="text-xl font-bold">Recently updated</h2>
+            <Link href="/directory" className="text-sm font-bold text-moss">
+              See everyone
+            </Link>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            {demoLeaders.map((l) => (
+              <Link
+                key={l.id}
+                href={`/directory/${l.id}`}
+                className="card p-5 transition hover:-translate-y-1"
+              >
+                <div className="grid h-11 w-11 place-items-center rounded-xl bg-mint font-black text-forest">
+                  {l.fullName
+                    .split(' ')
+                    .map((x) => x[0])
+                    .join('')}
+                </div>
+                <h3 className="mt-4 font-bold">{l.fullName}</h3>
+                <p className="text-xs text-ink/50">{l.jobTitle}</p>
+                <div className="mt-4 flex flex-wrap gap-1">
+                  {l.skills.slice(0, 2).map((s) => (
+                    <span className="pill bg-cream text-forest" key={s[0]}>
+                      {s[0]}
+                    </span>
+                  ))}
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      </div>
+    </>
+  );
+}

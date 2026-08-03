@@ -13,11 +13,10 @@ enum Role {
   VIEWER
 }
 
-enum Proficiency {
-  AWARENESS
-  WORKING
-  PRACTITIONER
-  EXPERT
+enum RatingSource {
+  self_rated
+  inferred
+  demo
 }
 
 enum SkillSource {
@@ -86,10 +85,11 @@ model LeaderSkill {
   id                String       @id @default(cuid())
   leaderId          String
   skillId           String
-  proficiency       Proficiency  @default(WORKING)
+  proficiency       Int          @default(3) @db.SmallInt
+  ratingSource      RatingSource
   source            SkillSource
   confidence        Float?
-  targetProficiency Proficiency?
+  targetProficiency Int?         @db.SmallInt
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
   leader            Leader       @relation(fields: [leaderId], references: [id], onDelete: Cascade)

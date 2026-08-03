@@ -1,1 +1,22 @@
-export interface KpiPayload{leaderEmail:string;quarter:string;skillDeltas:unknown[];certificationDeltas:unknown[]}export interface KpiConnector{pushSnapshot(data:KpiPayload):Promise<void>}export class HttpKpiConnector implements KpiConnector{constructor(private url=process.env.KPI_API_URL||'http://localhost:4020'){}async pushSnapshot(data:KpiPayload){const r=await fetch(`${this.url}/snapshots`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(data)});if(!r.ok)throw new Error(`KPI adapter: ${r.status}`)}}
+export interface KpiPayload {
+  leaderEmail: string;
+  quarter: string;
+  skillDeltas: unknown[];
+  certificationDeltas: unknown[];
+}
+export interface KpiConnector {
+  pushSnapshot(data: KpiPayload): Promise<void>;
+}
+export class HttpKpiConnector implements KpiConnector {
+  constructor(
+    private url = process.env.KPI_API_URL || 'http://localhost:4020',
+  ) {}
+  async pushSnapshot(data: KpiPayload) {
+    const r = await fetch(`${this.url}/snapshots`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!r.ok) throw new Error(`KPI adapter: ${r.status}`);
+  }
+}

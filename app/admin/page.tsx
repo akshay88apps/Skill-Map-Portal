@@ -1,2 +1,87 @@
-import Link from 'next/link';import { AlertTriangle,Database,History,ShieldCheck,Users } from 'lucide-react';import { PageHeader,Stat } from '@/components/ui';
-export default function Admin(){return <><PageHeader eyebrow="Governance" title="Admin console" description="Keep profiles trustworthy, current, and appropriately governed."/><div className="space-y-7 p-6 lg:p-10"><div className="grid gap-4 md:grid-cols-4"><Stat label="Profiles incomplete" value={2} detail="Missing key fields"/><Stat label="Pending review" value={3} detail="AI-extracted records"/><Stat label="Unresolved aliases" value={5} detail="Taxonomy cleanup"/><Stat label="Stale profiles" value={1} detail="2+ quarters old"/></div><div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">{[[AlertTriangle,'Ingestion review','Approve, edit, or reject low-confidence records.','/admin/review'],[Database,'Bulk data','Import or export profiles using CSV or XLSX.','#'],[History,'Audit log','Inspect before-and-after profile changes.','#'],[Users,'Role management','Assign admin, leader, and viewer access.','#'],[ShieldCheck,'Data quality','Resolve aliases and incomplete profiles.','#']].map(([Icon,title,body,href]:any)=><Link key={title} href={href} className="card p-6 hover:border-moss/40"><Icon className="text-moss"/><h2 className="mt-5 text-lg font-bold">{title}</h2><p className="mt-2 text-sm text-ink/50">{body}</p><p className="mt-5 text-sm font-bold text-moss">Open workspace →</p></Link>)}</div></div></>}
+import Link from 'next/link';
+import {
+  AlertTriangle,
+  Database,
+  History,
+  ShieldCheck,
+  Users,
+} from 'lucide-react';
+import { PageHeader, Stat } from '@/components/ui';
+export default function Admin() {
+  return (
+    <>
+      <PageHeader
+        eyebrow="Governance"
+        title="Admin console"
+        description="Keep profiles trustworthy, current, and appropriately governed."
+      />
+      <div className="space-y-7 p-6 lg:p-10">
+        <div className="grid gap-4 md:grid-cols-4">
+          <Stat
+            label="Profiles incomplete"
+            value={2}
+            detail="Missing key fields"
+          />
+          <Stat
+            label="Pending review"
+            value={3}
+            detail="AI-extracted records"
+          />
+          <Stat
+            label="Unresolved aliases"
+            value={5}
+            detail="Taxonomy cleanup"
+          />
+          <Stat label="Stale profiles" value={1} detail="2+ quarters old" />
+        </div>
+        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+          {[
+            [
+              AlertTriangle,
+              'Ingestion review',
+              'Approve, edit, or reject low-confidence records.',
+              '/admin/review',
+            ],
+            [
+              Database,
+              'Bulk data',
+              'Import or export profiles using CSV or XLSX.',
+              '#',
+            ],
+            [
+              History,
+              'Audit log',
+              'Inspect before-and-after profile changes.',
+              '#',
+            ],
+            [
+              Users,
+              'Role management',
+              'Assign admin, leader, and viewer access.',
+              '#',
+            ],
+            [
+              ShieldCheck,
+              'Data quality',
+              'Resolve aliases and incomplete profiles.',
+              '#',
+            ],
+          ].map(([Icon, title, body, href]: any) => (
+            <Link
+              key={title}
+              href={href}
+              className="card p-6 hover:border-moss/40"
+            >
+              <Icon className="text-moss" />
+              <h2 className="mt-5 text-lg font-bold">{title}</h2>
+              <p className="mt-2 text-sm text-ink/50">{body}</p>
+              <p className="mt-5 text-sm font-bold text-moss">
+                Open workspace →
+              </p>
+            </Link>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}

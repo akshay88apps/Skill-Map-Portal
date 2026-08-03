@@ -2,7 +2,7 @@
 
 - 2026-08-03 — Kept Next.js at the brief's 14.x line for compatibility and predictable deployment.
 - 2026-08-03 — Used REST route handlers and Zod because external portals can consume a conventional contract without sharing TypeScript.
-- 2026-08-03 — Modelled proficiency and source as enums so the skill matrix and integration provenance remain queryable.
+- 2026-08-03 — Replaced categorical proficiency with an explicit constrained 1–5 scale (Novice through Expert) and required `ratingSource`; wizard submissions are `self_rated`, legacy primary/secondary defaults are `inferred` (4/2), existing seed values are backfilled `demo`, and inferred gaps are advisory rather than decision-grade.
 - 2026-08-03 — Added deterministic ingestion as an offline fallback; paid AI improves extraction but is not a development dependency.
 - 2026-08-03 — Used a strict 0.70 confidence gate and retained raw text for traceability.
 - 2026-08-03 — Built L&D and KPI integrations as interfaces with HTTP implementations and mock defaults until real contracts arrive.
