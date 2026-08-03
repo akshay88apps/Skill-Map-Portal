@@ -1,0 +1,18 @@
+# Decision log
+
+- 2026-08-03 — Kept Next.js at the brief's 14.x line for compatibility and predictable deployment.
+- 2026-08-03 — Used REST route handlers and Zod because external portals can consume a conventional contract without sharing TypeScript.
+- 2026-08-03 — Modelled proficiency and source as enums so the skill matrix and integration provenance remain queryable.
+- 2026-08-03 — Added deterministic ingestion as an offline fallback; paid AI improves extraction but is not a development dependency.
+- 2026-08-03 — Used a strict 0.70 confidence gate and retained raw text for traceability.
+- 2026-08-03 — Built L&D and KPI integrations as interfaces with HTTP implementations and mock defaults until real contracts arrive.
+- 2026-08-03 — Created representative demo records because the referenced XLSX is not present in the workspace; the importer accepts it unchanged when supplied.
+- 2026-08-03 — Kept email validation domain-agnostic to support both observed company domains.
+
+## HUMAN INPUT NEEDED
+
+- Confirm the hosting target and paid AI budget ceiling before production provisioning.
+- Confirm Microsoft Entra ID is the production identity source and provide tenant/application details.
+- Spot-review imported AI records before raising the auto-commit confidence policy.
+- Provide L&D and KPI API contracts/credentials to replace mocks.
+- Approve go-live and define employee-PII retention before real data is loaded.

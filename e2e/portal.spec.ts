@@ -1,0 +1,3 @@
+import { test,expect } from '@playwright/test';
+test('leader can discover expertise',async({page})=>{await page.goto('/directory');await page.getByLabel('Search leaders').fill('Azure');await expect(page.getByText('Aarav Sharma')).toBeVisible();await page.getByText('Aarav Sharma').click();await expect(page.getByText('Capability profile')).toBeVisible()});
+test('profile wizard autosaves and advances',async({page})=>{await page.goto('/my-profile');await page.getByPlaceholder('Your legal or full name').fill('Test Leader');await page.getByText('Continue').click();await expect(page.getByText('Step 2 of 6')).toBeVisible()});

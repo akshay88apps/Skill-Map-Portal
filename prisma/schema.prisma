@@ -1,0 +1,176 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  LEADER
+  VIEWER
+}
+
+enum Proficiency {
+  AWARENESS
+  WORKING
+  PRACTITIONER
+  EXPERT
+}
+
+enum SkillSource {
+  PRIMARY
+  SECONDARY
+  PROFICIENT
+  SELF_REPORTED
+  AI_EXTRACTED
+  LND_COMPLETION
+}
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ProjectStatus {
+  ACTIVE
+  CLOSED
+  UNKNOWN
+}
+
+model Leader {
+  id                      String          @id @default(cuid())
+  fullName                String
+  preferredName           String?
+  email                   String          @unique
+  department              String?
+  jobTitle                String?
+  role                    Role            @default(LEADER)
+  experienceRaw           String?
+  experienceYearsEstimate Float?
+  leadershipBracketRaw    String?
+  leadershipYearsEstimate Float?
+  careerJourneyRaw        String?
+  profileCompleted        Boolean         @default(false)
+  lastProfileUpdate       DateTime?
+  createdAt               DateTime        @default(now())
+  updatedAt               DateTime        @updatedAt
+  skills                  LeaderSkill[]
+  tools                   LeaderTool[]
+  projects                Project[]
+  certifications          Certification[]
+  snapshots               KpiSnapshot[]
+  audits                  AuditLog[]
+}
+
+model Skill {
+  id          String        @id @default(cuid())
+  name        String        @unique
+  category    String?
+  needsReview Boolean       @default(false)
+  aliases     SkillAlias[]
+  leaders     LeaderSkill[]
+}
+
+model SkillAlias {
+  id      String @id @default(cuid())
+  rawText String @unique
+  skillId String
+  skill   Skill  @relation(fields: [skillId], references: [id], onDelete: Cascade)
+}
+
+model LeaderSkill {
+  id                String       @id @default(cuid())
+  leaderId          String
+  skillId           String
+  proficiency       Proficiency  @default(WORKING)
+  source            SkillSource
+  confidence        Float?
+  targetProficiency Proficiency?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  leader            Leader       @relation(fields: [leaderId], references: [id], onDelete: Cascade)
+  skill             Skill        @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@unique([leaderId, skillId, source])
+}
+
+model Project {
+  id                     String        @id @default(cuid())
+  leaderId               String
+  name                   String
+  client                 String?
+  role                   String?
+  durationText           String?
+  durationMonthsEstimate Int?
+  status                 ProjectStatus @default(UNKNOWN)
+  rawText                String?
+  confidence             Float?
+  leader                 Leader        @relation(fields: [leaderId], references: [id], onDelete: Cascade)
+}
+
+model Certification {
+  id        String    @id @default(cuid())
+  leaderId  String
+  name      String
+  issuer    String?
+  issuedAt  DateTime?
+  expiresAt DateTime?
+  rawText   String?
+  leader    Leader    @relation(fields: [leaderId], references: [id], onDelete: Cascade)
+}
+
+model Tool {
+  id      String       @id @default(cuid())
+  name    String       @unique
+  leaders LeaderTool[]
+}
+
+model LeaderTool {
+  leaderId String
+  toolId   String
+  leader   Leader @relation(fields: [leaderId], references: [id], onDelete: Cascade)
+  tool     Tool   @relation(fields: [toolId], references: [id], onDelete: Cascade)
+
+  @@id([leaderId, toolId])
+}
+
+model ReviewItem {
+  id         String       @id @default(cuid())
+  entityType String
+  payload    Json
+  confidence Float
+  status     ReviewStatus @default(PENDING)
+  reviewedBy String?
+  reviewedAt DateTime?
+  createdAt  DateTime     @default(now())
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  leaderId   String?
+  actorEmail String
+  action     String
+  entityType String
+  entityId   String
+  before     Json?
+  after      Json?
+  createdAt  DateTime @default(now())
+  leader     Leader?  @relation(fields: [leaderId], references: [id], onDelete: SetNull)
+}
+
+model KpiSnapshot {
+  id                 String   @id @default(cuid())
+  leaderId           String
+  quarter            String
+  payload            Json
+  skillCount         Int
+  certificationCount Int
+  createdAt          DateTime @default(now())
+  leader             Leader   @relation(fields: [leaderId], references: [id], onDelete: Cascade)
+
+  @@unique([leaderId, quarter])
+}
