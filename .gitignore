@@ -5,4 +5,5 @@ playwright-report
 test-results
 coverage
 *.log
+*.tsbuildinfo
 prisma/dev.db

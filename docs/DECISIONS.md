@@ -8,6 +8,7 @@
 - 2026-08-03 — Built L&D and KPI integrations as interfaces with HTTP implementations and mock defaults until real contracts arrive.
 - 2026-08-03 — Created representative demo records because the referenced XLSX is not present in the workspace; the importer accepts it unchanged when supplied.
 - 2026-08-03 — Kept email validation domain-agnostic to support both observed company domains.
+- 2026-08-03 — Dependency audit reports advisories in the brief-mandated Next.js 14 line and unpatched `xlsx`; production launch is gated on a framework upgrade/security acceptance, and workbook imports must remain admin-only with size limits.
 
 ## HUMAN INPUT NEEDED
 
