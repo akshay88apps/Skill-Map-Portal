@@ -1,10 +1,16 @@
-import { NextRequest } from 'next/server';
+import { auth } from '@/auth';
 export type AppRole = 'ADMIN' | 'LEADER' | 'VIEWER';
-export function roleFrom(req: NextRequest): AppRole {
-  return (
-    (req.headers.get('x-portal-role')?.toUpperCase() as AppRole) || 'VIEWER'
-  );
+export async function currentIdentity() {
+  const session = await auth();
+  return session?.user || null;
 }
-export function isAdmin(req: NextRequest) {
-  return roleFrom(req) === 'ADMIN';
+export async function requireIdentity() {
+  const user = await currentIdentity();
+  if (!user) throw new Error('UNAUTHENTICATED');
+  return user;
+}
+export async function requireAdmin() {
+  const user = await requireIdentity();
+  if (user.role !== 'ADMIN') throw new Error('FORBIDDEN');
+  return user;
 }

@@ -3,8 +3,9 @@ import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { Search, SlidersHorizontal } from 'lucide-react';
 import { PageHeader } from '@/components/ui';
-import { demoLeaders } from '@/lib/demo';
+import { useLiveLeaders } from '@/lib/use-live-leaders';
 export default function Directory() {
+  const { leaders: demoLeaders, loading } = useLiveLeaders();
   const [q, setQ] = useState('');
   const [dept, setDept] = useState('All');
   const rows = useMemo(
@@ -16,7 +17,7 @@ export default function Directory() {
             .toLowerCase()
             .includes(q.toLowerCase()),
       ),
-    [q, dept],
+    [q, dept, demoLeaders],
   );
   return (
     <>
@@ -55,7 +56,9 @@ export default function Directory() {
             </select>
           </label>
         </div>
-        <p className="mb-4 text-sm text-ink/50">{rows.length} leaders found</p>
+        <p className="mb-4 text-sm text-ink/50">
+          {loading ? 'Loading live profiles…' : `${rows.length} leaders found`}
+        </p>
         <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
           {rows.map((l) => (
             <Link

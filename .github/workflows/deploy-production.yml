@@ -1,0 +1,29 @@
+name: Deploy production
+on: { workflow_dispatch: {}, push: { branches: [main], tags: ['production-*'] } }
+permissions: { id-token: write, contents: read }
+jobs:
+  verify-build-deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: npm }
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - uses: aws-actions/configure-aws-credentials@v4
+        with: { role-to-assume: '${{ secrets.AWS_DEPLOY_ROLE_ARN }}', aws-region: '${{ vars.AWS_REGION }}' }
+      - uses: aws-actions/amazon-ecr-login@v2
+      - name: Build and push immutable image
+        env: { ECR_REPOSITORY: '${{ vars.ECR_REPOSITORY }}' }
+        run: |
+          ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
+          IMAGE="$ACCOUNT.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com/$ECR_REPOSITORY:${GITHUB_SHA}"
+          docker build -t "$IMAGE" .
+          docker push "$IMAGE"
+          echo "IMAGE_URI=$IMAGE" >> "$GITHUB_ENV"
+      - name: Deploy CloudFormation
+        run: |
+          aws cloudformation deploy --stack-name skillmap-production --template-file infra/production.yaml --capabilities CAPABILITY_IAM --no-fail-on-empty-changeset \
+            --parameter-overrides ImageUri="$IMAGE_URI" CertificateArn="${{ secrets.ACM_CERTIFICATE_ARN }}" DatabasePassword="${{ secrets.DATABASE_PASSWORD }}" AuthSecret="${{ secrets.AUTH_SECRET }}" EntraClientId="${{ secrets.ENTRA_CLIENT_ID }}" EntraClientSecret="${{ secrets.ENTRA_CLIENT_SECRET }}" EntraIssuer="${{ secrets.ENTRA_ISSUER }}" AdminGroupId="${{ secrets.ENTRA_ADMIN_GROUP_ID }}" LeaderGroupId="${{ secrets.ENTRA_LEADER_GROUP_ID }}" AppBaseUrl="${{ vars.APP_BASE_URL }}" SesFromEmail="${{ vars.SES_FROM_EMAIL }}" CronSecret="${{ secrets.CRON_SECRET }}"

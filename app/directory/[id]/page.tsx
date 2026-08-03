@@ -1,10 +1,41 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowLeft, Award, Briefcase, Mail } from 'lucide-react';
-import { demoLeaders } from '@/lib/demo';
-export default function Profile({ params }: { params: { id: string } }) {
-  const l = demoLeaders.find((x) => x.id === params.id);
-  if (!l) notFound();
+import { db } from '@/lib/db';
+import { currentIdentity } from '@/lib/authz';
+export const dynamic = 'force-dynamic';
+export default async function Profile(props: {
+  params: Promise<{ id: string }>;
+}) {
+  const params = await props.params;
+  const user = await currentIdentity();
+  if (!user) notFound();
+  const row = await db.leader.findFirst({
+    where: {
+      id: params.id,
+      ...(user.role === 'ADMIN' ? {} : { profileStatus: 'PUBLISHED' }),
+    },
+    include: {
+      skills: { include: { skill: true } },
+      projects: true,
+      certifications: true,
+    },
+  });
+  if (!row) notFound();
+  const l = {
+    ...row,
+    preferredName: row.preferredName || row.fullName,
+    department: row.department || 'Unassigned',
+    jobTitle: row.jobTitle || 'Leader',
+    experienceYearsEstimate: row.experienceYearsEstimate || 0,
+    leadershipBracketRaw: row.leadershipBracketRaw || '',
+    skills: row.skills.map(
+      (x) => [x.skill.name, x.proficiency, x.ratingSource] as const,
+    ),
+    projects: row.projects.length,
+    certs: row.certifications.length,
+    updatedAt: row.updatedAt.toISOString().slice(0, 10),
+  };
   return (
     <div>
       <div className="bg-forest px-6 py-10 text-white lg:px-10">

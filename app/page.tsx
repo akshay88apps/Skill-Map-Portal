@@ -1,8 +1,40 @@
 import Link from 'next/link';
 import { ArrowRight, Sparkles } from 'lucide-react';
 import { PageHeader, Stat } from '@/components/ui';
-import { allSkills, demoLeaders } from '@/lib/demo';
-export default function Home() {
+import { db } from '@/lib/db';
+import { currentIdentity } from '@/lib/authz';
+export const dynamic = 'force-dynamic';
+export default async function Home() {
+  const user = await currentIdentity();
+  const rows = user
+    ? await db.leader.findMany({
+        where: user.role === 'ADMIN' ? {} : { profileStatus: 'PUBLISHED' },
+        include: {
+          skills: { include: { skill: true } },
+          projects: true,
+          certifications: true,
+        },
+        take: 8,
+        orderBy: { updatedAt: 'desc' },
+      })
+    : [];
+  const demoLeaders = rows.map((row) => ({
+    ...row,
+    preferredName: row.preferredName || row.fullName,
+    department: row.department || 'Unassigned',
+    jobTitle: row.jobTitle || 'Leader',
+    experienceYearsEstimate: row.experienceYearsEstimate || 0,
+    leadershipBracketRaw: row.leadershipBracketRaw || '',
+    skills: row.skills.map(
+      (x) => [x.skill.name, x.proficiency, x.ratingSource] as const,
+    ),
+    projects: row.projects.length,
+    certs: row.certifications.length,
+    updatedAt: row.updatedAt.toISOString().slice(0, 10),
+  }));
+  const allSkills = [
+    ...new Set(demoLeaders.flatMap((l) => l.skills.map((s) => s[0]))),
+  ];
   return (
     <>
       <PageHeader

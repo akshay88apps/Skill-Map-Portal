@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { Download } from 'lucide-react';
 import { PageHeader } from '@/components/ui';
-import { allSkills, demoLeaders } from '@/lib/demo';
+import { useLiveLeaders } from '@/lib/use-live-leaders';
 const color: Record<number, string> = {
   5: 'bg-forest text-white',
   4: 'bg-[#2f6653] text-white',
@@ -12,6 +12,10 @@ const color: Record<number, string> = {
 };
 const labels = ['', 'Novice', 'Familiar', 'Proficient', 'Advanced', 'Expert'];
 export default function Matrix() {
+  const { leaders: demoLeaders } = useLiveLeaders();
+  const allSkills = [
+    ...new Set(demoLeaders.flatMap((l) => l.skills.map((s) => s[0]))),
+  ];
   const [dept, setDept] = useState('All');
   const leaders = demoLeaders.filter(
     (l) => dept === 'All' || l.department === dept,

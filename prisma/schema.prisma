@@ -19,6 +19,15 @@ enum RatingSource {
   demo
 }
 
+enum ProfileStatus {
+  INVITED
+  DRAFT
+  SUBMITTED
+  PUBLISHED
+  RETURNED
+  DEACTIVATED
+}
+
 enum SkillSource {
   PRIMARY
   SECONDARY
@@ -48,6 +57,12 @@ model Leader {
   department              String?
   jobTitle                String?
   role                    Role            @default(LEADER)
+  entraObjectId           String?         @unique
+  profileStatus           ProfileStatus   @default(INVITED)
+  invitedAt               DateTime?
+  submittedAt             DateTime?
+  publishedAt             DateTime?
+  draftData               Json?
   experienceRaw           String?
   experienceYearsEstimate Float?
   leadershipBracketRaw    String?
@@ -63,6 +78,32 @@ model Leader {
   certifications          Certification[]
   snapshots               KpiSnapshot[]
   audits                  AuditLog[]
+}
+
+model Invitation {
+  id         String    @id @default(cuid())
+  email      String
+  invitedBy  String
+  dueAt      DateTime?
+  sentAt     DateTime?
+  acceptedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([email])
+}
+
+model NotificationJob {
+  id          String    @id @default(cuid())
+  kind        String
+  recipient   String
+  payload     Json
+  scheduledAt DateTime
+  sentAt      DateTime?
+  attempts    Int       @default(0)
+  lastError   String?
+  createdAt   DateTime  @default(now())
+
+  @@index([scheduledAt, sentAt])
 }
 
 model Skill {

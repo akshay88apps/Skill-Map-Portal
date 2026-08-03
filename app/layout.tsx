@@ -8,6 +8,7 @@ import {
   ShieldCheck,
   UserRound,
 } from 'lucide-react';
+import { auth, signOut } from '@/auth';
 export const metadata = {
   title: 'Skillmap — Tech Leaders',
   description: 'Discover expertise, grow capability, build stronger teams.',
@@ -20,7 +21,17 @@ const nav = [
   ['/analytics', BarChart3, 'Analytics'],
   ['/admin', ShieldCheck, 'Admin'],
 ] as const;
-export default function Layout({ children }: { children: React.ReactNode }) {
+export default async function Layout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const session = await auth();
+  const visibleNav = nav.filter(
+    ([href]) =>
+      !['/admin', '/analytics'].includes(href) ||
+      session?.user.role === 'ADMIN',
+  );
   return (
     <html lang="en">
       <body>
@@ -33,7 +44,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               <p className="mt-1 text-xs text-white/55">TECH LEADERS PORTAL</p>
             </div>
             <nav className="flex gap-1 overflow-auto px-3 pb-4 lg:block">
-              {nav.map(([href, Icon, label]) => (
+              {visibleNav.map(([href, Icon, label]) => (
                 <Link
                   key={href}
                   href={href}
@@ -45,9 +56,24 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               ))}
             </nav>
             <div className="hidden absolute bottom-6 left-5 right-5 rounded-xl bg-white/10 p-4 text-xs text-white/65 lg:block">
-              Secure employee skills workspace
-              <br />
-              <span className="text-[#9fd9bd]">Entra ID ready</span>
+              <span className="block truncate text-white">
+                {session?.user.email || 'Secure workspace'}
+              </span>
+              <span className="text-[#9fd9bd]">
+                {session?.user.role?.toLowerCase() || 'Microsoft SSO'}
+              </span>
+              {session?.user && (
+                <form
+                  action={async () => {
+                    'use server';
+                    await signOut({ redirectTo: '/signin' });
+                  }}
+                >
+                  <button className="mt-2 text-white/60 hover:text-white">
+                    Sign out
+                  </button>
+                </form>
+              )}
             </div>
           </aside>
           <main className="grid-bg min-h-screen flex-1 lg:ml-64">

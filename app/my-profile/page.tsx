@@ -15,7 +15,8 @@ type RatedSkill = { name: string; proficiency: number };
 type Draft = {
   fullName?: string;
   preferredName?: string;
-  email?: string;
+  department?: string;
+  jobTitle?: string;
   experience?: string;
   leadership?: string;
   projects?: string;
@@ -30,16 +31,38 @@ export default function Wizard() {
   const [saved, setSaved] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState('');
-  const [data, setData] = useState<Draft>({
-    ratedSkills: [{ name: '', proficiency: 3 }],
+  const [data, setData] = useState<Draft>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('skillmap-draft');
+      if (saved) return JSON.parse(saved);
+    }
+    return { ratedSkills: [{ name: '', proficiency: 3 }] };
   });
   useEffect(() => {
-    const d = localStorage.getItem('skillmap-draft');
-    if (d) setData(JSON.parse(d));
+    fetch('/api/profile')
+      .then(async (response) => {
+        if (!response.ok) return;
+        const profile = await response.json();
+        if (profile?.draftData) setData(profile.draftData);
+        else if (profile)
+          setData((current) => ({
+            ...current,
+            fullName: profile.fullName,
+            preferredName: profile.preferredName || '',
+            department: profile.department || '',
+            jobTitle: profile.jobTitle || '',
+          }));
+      })
+      .catch(() => undefined);
   }, []);
   const persist = (next: Draft) => {
     setData(next);
     localStorage.setItem('skillmap-draft', JSON.stringify(next));
+    fetch('/api/profile', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(next),
+    }).catch(() => undefined);
     setSaved(true);
     setTimeout(() => setSaved(false), 1200);
   };
@@ -54,12 +77,13 @@ export default function Wizard() {
     setSubmitting(true);
     setMessage('');
     try {
-      const response = await fetch('/api/profile/skills', {
+      const response = await fetch('/api/profile', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
-          email: data.email,
-          skills: skills.filter((s) => s.name.trim()),
+          ...data,
+          fullName: data.fullName || '',
+          ratedSkills: skills.filter((s) => s.name.trim()),
         }),
       });
       const body = await response.json();
@@ -125,10 +149,16 @@ export default function Wizard() {
                     placeholder="What colleagues call you"
                   />
                   <Field
-                    label="Work email"
-                    value={data.email}
-                    onChange={(v) => set('email', v)}
-                    placeholder="name@company.com"
+                    label="Department"
+                    value={data.department}
+                    onChange={(v) => set('department', v)}
+                    placeholder="Your department"
+                  />
+                  <Field
+                    label="Job title"
+                    value={data.jobTitle}
+                    onChange={(v) => set('jobTitle', v)}
+                    placeholder="Your current role"
                   />
                 </>
               )}

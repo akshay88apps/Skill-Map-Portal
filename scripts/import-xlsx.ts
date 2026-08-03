@@ -1,4 +1,4 @@
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import { db } from '../lib/db';
 import {
   canonical,
@@ -12,14 +12,28 @@ import {
   safeInferredProficiency,
 } from '../lib/ingestion/service';
 const file = process.argv[2] || 'Tech_Leaders_Skill_Gathering.xlsx';
-const wb = XLSX.readFile(file);
-const rows = XLSX.utils.sheet_to_json<Record<string, string>>(
-  wb.Sheets[wb.SheetNames[0]],
-  { defval: '' },
-);
+async function readRows() {
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.readFile(file);
+  const sheet = workbook.worksheets[0];
+  if (!sheet) throw new Error('Workbook has no worksheet');
+  const headers = sheet.getRow(1).values as ExcelJS.CellValue[];
+  const rows: Record<string, string>[] = [];
+  sheet.eachRow((row, index) => {
+    if (index === 1) return;
+    const record: Record<string, string> = {};
+    row.eachCell({ includeEmpty: true }, (cell, column) => {
+      const header = String(headers[column] || '').trim();
+      if (header) record[header] = cell.text.trim();
+    });
+    if (Object.values(record).some(Boolean)) rows.push(record);
+  });
+  return rows;
+}
 const pick = (r: Record<string, string>, ...names: string[]) =>
   names.map((n) => r[n]).find(Boolean) || '';
 async function run() {
+  const rows = await readRows();
   for (const row of rows) {
     const fullName = pick(row, 'Full Name', 'Full name');
     const preferredName = pick(row, 'Name');

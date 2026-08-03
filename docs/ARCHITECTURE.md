@@ -1,6 +1,6 @@
 # Architecture
 
-The portal is a Next.js 14 App Router application with server-rendered discovery surfaces and client components only where interaction requires them. Route handlers expose a REST API validated with Zod. Prisma targets PostgreSQL and preserves raw input beside derived values whenever normalization is lossy.
+The portal is a Next.js 16 App Router application with React 19, server-rendered discovery surfaces and client components only where interaction requires them. Route handlers expose a REST API validated with Zod. Prisma targets PostgreSQL and preserves raw input beside derived values whenever normalization is lossy.
 
 ## Modules
 

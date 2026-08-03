@@ -2,19 +2,26 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { canonical } from '@/lib/normalization';
 import { selfRatingInput } from '@/lib/validation';
+import { requireIdentity } from '@/lib/authz';
 export async function POST(req: NextRequest) {
+  let user;
+  try {
+    user = await requireIdentity();
+  } catch {
+    return NextResponse.json({ error: 'Unauthenticated' }, { status: 401 });
+  }
   const parsed = selfRatingInput.safeParse(await req.json());
   if (!parsed.success)
     return NextResponse.json(
       {
-        error: 'A valid email and 1–5 rating for every skill are required',
+        error: 'A valid 1–5 rating for every skill is required',
         issues: parsed.error.flatten(),
       },
       { status: 422 },
     );
-  const leader = await db.leader.findUnique({
-    where: { email: parsed.data.email.toLowerCase() },
-  });
+  const leader = user.leaderId
+    ? await db.leader.findUnique({ where: { id: user.leaderId } })
+    : null;
   if (!leader)
     return NextResponse.json(
       { error: 'No leader profile exists for this email' },

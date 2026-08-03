@@ -26,7 +26,6 @@ export const reviewInput = z.object({
   payload: z.record(z.unknown()).optional(),
 });
 export const selfRatingInput = z.object({
-  email: z.string().email(),
   skills: z
     .array(
       z.object({
@@ -37,3 +36,24 @@ export const selfRatingInput = z.object({
     .min(1)
     .max(100),
 });
+export const profileInput = z.object({
+  fullName: z.string().min(2).max(120),
+  preferredName: z.string().max(80).optional(),
+  department: z.string().max(80).optional(),
+  jobTitle: z.string().max(100).optional(),
+  experience: z.string().max(40).optional(),
+  leadership: z.string().max(40).optional(),
+  projects: z.string().max(20000).optional(),
+  tools: z.string().max(5000).optional(),
+  certs: z.string().max(5000).optional(),
+  journey: z.string().max(20000).optional(),
+  ratedSkills: z
+    .array(
+      z.object({
+        name: z.string().trim().min(1).max(100),
+        proficiency: z.number().int().min(1).max(5),
+      }),
+    )
+    .max(100),
+});
+export const profileDraftInput = profileInput.partial();

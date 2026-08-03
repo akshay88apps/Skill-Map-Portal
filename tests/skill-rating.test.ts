@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { selfRatingInput } from '@/lib/validation';
+import {
+  profileDraftInput,
+  profileInput,
+  selfRatingInput,
+} from '@/lib/validation';
 import { detectSkillGaps } from '@/lib/integrations/lnd';
 describe('explicit skill ratings', () => {
   it.each([1, 2, 3, 4, 5])('accepts %i on the defined scale', (proficiency) =>
@@ -53,4 +57,19 @@ describe('L&D gap confidence', () => {
       ratingSource: 'inferred',
       decisionConfidence: 'advisory',
     }));
+});
+describe('production profile contract', () => {
+  it('requires a complete identity-bound submission with valid ratings', () =>
+    expect(
+      profileInput.safeParse({
+        fullName: 'Test Leader',
+        ratedSkills: [{ name: 'Azure', proficiency: 4 }],
+      }).success,
+    ).toBe(true));
+  it('allows incomplete server-side drafts but still validates field limits', () => {
+    expect(
+      profileDraftInput.safeParse({ projects: 'In progress' }).success,
+    ).toBe(true);
+    expect(profileDraftInput.safeParse({ fullName: 'x' }).success).toBe(false);
+  });
 });

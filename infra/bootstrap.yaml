@@ -1,0 +1,21 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: One-time Skillmap deployment bootstrap (ECR and GitHub OIDC role)
+Parameters:
+  GitHubRepository: { Type: String, Default: akshay88apps/Skill-Map-Portal }
+Resources:
+  Repository:
+    Type: AWS::ECR::Repository
+    Properties: {RepositoryName: skillmap, ImageScanningConfiguration: {ScanOnPush: true}, ImageTagMutability: IMMUTABLE, LifecyclePolicy: {LifecyclePolicyText: '{"rules":[{"rulePriority":1,"description":"retain 20 images","selection":{"tagStatus":"any","countType":"imageCountMoreThan","countNumber":20},"action":{"type":"expire"}}]}'} }
+  GitHubOidc:
+    Type: AWS::IAM::OIDCProvider
+    Properties: {Url: 'https://token.actions.githubusercontent.com', ClientIdList: ['sts.amazonaws.com'], ThumbprintList: ['6938fd4d98bab03faadb97b34396831e3780aea1']}
+  DeployRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument: !Sub '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Federated":"${GitHubOidc}"},"Action":"sts:AssumeRoleWithWebIdentity","Condition":{"StringEquals":{"token.actions.githubusercontent.com:aud":"sts.amazonaws.com"},"StringLike":{"token.actions.githubusercontent.com:sub":"repo:${GitHubRepository}:*"}}}]}'
+      Policies:
+        - PolicyName: SkillmapDeployment
+          PolicyDocument: {Version: '2012-10-17', Statement: [{Effect: Allow, Action: ['cloudformation:*','ecr:*','ecs:*','elasticloadbalancing:*','ec2:*','rds:*','logs:*','secretsmanager:*','events:*','iam:PassRole','iam:GetRole','iam:CreateRole','iam:DeleteRole','iam:PutRolePolicy','iam:DeleteRolePolicy','iam:TagRole','iam:UntagRole','iam:UpdateAssumeRolePolicy'], Resource: '*'}]}
+Outputs:
+  EcrRepository: { Value: !Ref Repository }
+  DeployRoleArn: { Value: !GetAtt DeployRole.Arn }

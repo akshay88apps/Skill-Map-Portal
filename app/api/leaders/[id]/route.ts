@@ -2,12 +2,22 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { leaderInput } from '@/lib/validation';
 import { normalizeExperience } from '@/lib/normalization';
+import { currentIdentity, requireAdmin } from '@/lib/authz';
 export async function GET(
   _: NextRequest,
-  { params }: { params: { id: string } },
+  props: { params: Promise<{ id: string }> },
 ) {
-  const x = await db.leader.findUnique({
-    where: { id: params.id },
+  const params = await props.params;
+  const user = await currentIdentity();
+  if (!user)
+    return NextResponse.json({ error: 'Unauthenticated' }, { status: 401 });
+  const x = await db.leader.findFirst({
+    where: {
+      id: params.id,
+      ...(user.role === 'ADMIN' || user.leaderId === params.id
+        ? {}
+        : { profileStatus: 'PUBLISHED' }),
+    },
     include: {
       skills: { include: { skill: true } },
       tools: { include: { tool: true } },
@@ -22,8 +32,14 @@ export async function GET(
 }
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } },
+  props: { params: Promise<{ id: string }> },
 ) {
+  const params = await props.params;
+  const user = await currentIdentity();
+  if (!user)
+    return NextResponse.json({ error: 'Unauthenticated' }, { status: 401 });
+  if (user.role !== 'ADMIN' && user.leaderId !== params.id)
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   const parsed = leaderInput.partial().safeParse(await req.json());
   if (!parsed.success)
     return NextResponse.json(
@@ -58,7 +74,7 @@ export async function PATCH(
   await db.auditLog.create({
     data: {
       leaderId: params.id,
-      actorEmail: req.headers.get('x-user-email') || 'system',
+      actorEmail: user.email || 'system',
       action: 'UPDATE',
       entityType: 'Leader',
       entityId: params.id,
@@ -70,8 +86,14 @@ export async function PATCH(
 }
 export async function DELETE(
   _: NextRequest,
-  { params }: { params: { id: string } },
+  props: { params: Promise<{ id: string }> },
 ) {
+  const params = await props.params;
+  try {
+    await requireAdmin();
+  } catch {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
   await db.leader.delete({ where: { id: params.id } });
   return new NextResponse(null, { status: 204 });
 }
