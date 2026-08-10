@@ -4,11 +4,13 @@ const mocks = vi.hoisted(() => ({
   findLeaders: vi.fn(),
   findSkills: vi.fn(),
   findSnapshots: vi.fn(),
+  countViewerSkills: vi.fn(),
 }));
 
 vi.mock('@/lib/db', () => ({
   db: {
     leader: { findMany: mocks.findLeaders },
+    leaderSkill: { count: mocks.countViewerSkills },
     skill: { findMany: mocks.findSkills },
     kpiSnapshot: { findMany: mocks.findSnapshots },
   },
@@ -83,6 +85,7 @@ beforeEach(() => {
     { quarter: '2026-Q1', skillCount: 2 },
     { quarter: '2026-Q1', skillCount: 2 },
   ]);
+  mocks.countViewerSkills.mockResolvedValue(0);
 });
 
 describe('live dashboard reconciliation', () => {
@@ -130,5 +133,23 @@ describe('live dashboard reconciliation', () => {
       value: '—',
       detail: 'No quarterly history yet',
     });
+  });
+
+  it('reports whether the signed-in leader has skills for map expansion', async () => {
+    let dashboard = await loadDashboardData({
+      role: 'LEADER',
+      leaderId: 'leader-1',
+    });
+    expect(dashboard.viewerHasSkills).toBe(false);
+    expect(mocks.countViewerSkills).toHaveBeenCalledWith({
+      where: { leaderId: 'leader-1' },
+    });
+
+    mocks.countViewerSkills.mockResolvedValue(2);
+    dashboard = await loadDashboardData({
+      role: 'LEADER',
+      leaderId: 'leader-1',
+    });
+    expect(dashboard.viewerHasSkills).toBe(true);
   });
 });

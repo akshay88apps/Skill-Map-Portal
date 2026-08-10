@@ -71,6 +71,11 @@ describe('production profile contract', () => {
         fullName: 'Test Leader',
         experience: '10 years 0 months',
         ratedSkills: [{ name: 'Azure Functions', proficiency: 4 }],
+        careerAspiration: {
+          targetRole: 'Engineering Lead',
+          targetSkills: [{ name: 'Azure Functions', targetProficiency: 5 }],
+          targetTimeframe: 'SIX_TO_TWELVE_MONTHS',
+        },
       }).success,
     ).toBe(true));
   it('allows incomplete server-side drafts but still validates field limits', () => {

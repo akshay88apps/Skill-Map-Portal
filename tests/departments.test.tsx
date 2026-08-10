@@ -37,6 +37,11 @@ describe('profile department selection', () => {
         department: 'Product Engineering',
         experience: '10 years 0 months',
         ratedSkills: [],
+        careerAspiration: {
+          targetRole: 'Engineering Lead',
+          targetSkills: [{ name: 'Azure Functions', targetProficiency: 4 }],
+          targetTimeframe: 'SIX_TO_TWELVE_MONTHS',
+        },
       }).success,
     ).toBe(true);
     expect(
@@ -45,6 +50,11 @@ describe('profile department selection', () => {
         department: 'Engineering',
         experience: '10 years 0 months',
         ratedSkills: [],
+        careerAspiration: {
+          targetRole: 'Engineering Lead',
+          targetSkills: [{ name: 'Azure Functions', targetProficiency: 4 }],
+          targetTimeframe: 'SIX_TO_TWELVE_MONTHS',
+        },
       }).success,
     ).toBe(false);
   });

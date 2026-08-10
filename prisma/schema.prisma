@@ -55,6 +55,13 @@ enum ManualCapabilityTag {
   PRODUCT_STRATEGY_VENTURE_STUDIO
 }
 
+enum CareerTimeframe {
+  ZERO_TO_SIX_MONTHS
+  SIX_TO_TWELVE_MONTHS
+  ONE_TO_TWO_YEARS
+  TWO_PLUS_YEARS
+}
+
 model Leader {
   id                       String                @id @default(cuid())
   fullName                 String
@@ -74,7 +81,6 @@ model Leader {
   experienceYearsEstimate  Float?
   leadershipBracketRaw     String?
   leadershipYearsEstimate  Float?
-  careerJourneyRaw         String?
   profileCompleted         Boolean               @default(false)
   lastProfileUpdate        DateTime?
   createdAt                DateTime              @default(now())
@@ -83,6 +89,7 @@ model Leader {
   tools                    LeaderTool[]
   projects                 Project[]
   certifications           Certification[]
+  careerAspiration         CareerAspiration?
   snapshots                KpiSnapshot[]
   audits                   AuditLog[]
 }
@@ -114,12 +121,13 @@ model NotificationJob {
 }
 
 model Skill {
-  id          String        @id @default(cuid())
-  name        String        @unique
-  category    String?
-  needsReview Boolean       @default(false)
-  aliases     SkillAlias[]
-  leaders     LeaderSkill[]
+  id                String                  @id @default(cuid())
+  name              String                  @unique
+  category          String?
+  needsReview       Boolean                 @default(false)
+  aliases           SkillAlias[]
+  leaders           LeaderSkill[]
+  aspirationTargets CareerAspirationSkill[]
 }
 
 model SkillAlias {
@@ -130,20 +138,47 @@ model SkillAlias {
 }
 
 model LeaderSkill {
-  id                String       @id @default(cuid())
-  leaderId          String
-  skillId           String
-  proficiency       Int          @default(3) @db.SmallInt
-  ratingSource      RatingSource
-  source            SkillSource
-  confidence        Float?
-  targetProficiency Int?         @db.SmallInt
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
-  leader            Leader       @relation(fields: [leaderId], references: [id], onDelete: Cascade)
-  skill             Skill        @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  id           String       @id @default(cuid())
+  leaderId     String
+  skillId      String
+  proficiency  Int          @default(3) @db.SmallInt
+  ratingSource RatingSource
+  source       SkillSource
+  confidence   Float?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  leader       Leader       @relation(fields: [leaderId], references: [id], onDelete: Cascade)
+  skill        Skill        @relation(fields: [skillId], references: [id], onDelete: Cascade)
 
   @@unique([leaderId, skillId, source])
+}
+
+model CareerAspiration {
+  id                  String                  @id @default(cuid())
+  leaderId            String                  @unique
+  targetCapability    String?
+  targetRole          String?                 @db.VarChar(60)
+  targetTimeframe     CareerTimeframe?
+  secondaryCapability String?
+  notes               String?                 @db.VarChar(300)
+  legacyJourneyBackup String?
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
+  leader              Leader                  @relation(fields: [leaderId], references: [id], onDelete: Cascade)
+  targetSkills        CareerAspirationSkill[]
+}
+
+model CareerAspirationSkill {
+  leaderId          String
+  skillId           String
+  targetProficiency Int              @db.SmallInt
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  aspiration        CareerAspiration @relation(fields: [leaderId], references: [leaderId], onDelete: Cascade)
+  skill             Skill            @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@id([leaderId, skillId])
+  @@index([skillId])
 }
 
 model Project {
@@ -163,18 +198,18 @@ model Project {
 }
 
 model Certification {
-  id            String    @id @default(cuid())
-  leaderId      String
-  name          String
-  issuer        String?
-  issuedAt      DateTime?
-  expiresAt     DateTime?
-  rawText       String?
+  id                    String    @id @default(cuid())
+  leaderId              String
+  name                  String
+  issuer                String?
+  issuedAt              DateTime?
+  expiresAt             DateTime?
+  rawText               String?
   attachmentBlobName    String?   @unique
   attachmentContentType String?
   attachmentFileName    String?
   attachmentSize        Int?
-  leader        Leader    @relation(fields: [leaderId], references: [id], onDelete: Cascade)
+  leader                Leader    @relation(fields: [leaderId], references: [id], onDelete: Cascade)
 }
 
 model Tool {

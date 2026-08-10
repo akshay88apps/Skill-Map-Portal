@@ -1,9 +1,13 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowLeft, Award, Briefcase, Mail } from 'lucide-react';
+import { ArrowLeft, Award, Briefcase, Mail, Target } from 'lucide-react';
 import { db } from '@/lib/db';
 import { currentIdentity } from '@/lib/authz';
 import { Empty } from '@/components/ui';
+import {
+  careerTimeframeLabel,
+  proficiencyComparison,
+} from '@/lib/career-aspiration';
 export const dynamic = 'force-dynamic';
 export default async function Profile(props: {
   params: Promise<{ id: string }>;
@@ -19,6 +23,9 @@ export default async function Profile(props: {
     include: {
       skills: { include: { skill: true } },
       projects: true,
+      careerAspiration: {
+        include: { targetSkills: { include: { skill: true } } },
+      },
       certifications: {
         select: {
           id: true,
@@ -31,6 +38,7 @@ export default async function Profile(props: {
     },
   });
   if (!row) notFound();
+  const isOwner = user.leaderId === row.id;
   const l = {
     ...row,
     preferredName: row.preferredName || row.fullName,
@@ -51,7 +59,8 @@ export default async function Profile(props: {
     row.department,
     row.jobTitle,
     row.experienceRaw,
-    row.careerJourneyRaw,
+    row.careerAspiration?.targetRole,
+    row.careerAspiration?.targetSkills.length,
     row.skills.length,
     row.projects.length,
     row.certifications.length,
@@ -187,17 +196,104 @@ export default async function Profile(props: {
               </div>
             )}
           </section>
-          <section className="card p-7">
-            <h2 className="text-xl font-semibold">Career journey</h2>
-            <div className="mt-6 border-l-2 border-mint pl-6">
-              <h3 className="font-semibold">{l.jobTitle}</h3>
-              <p className="text-sm text-moss">Current · MoreYeahs</p>
-              <p className="mt-2 text-sm text-neutral-600">
-                Leading strategy, delivery, and capability development across{' '}
-                {l.department}.
-              </p>
-            </div>
-          </section>
+          {isOwner && (
+            <section className="card p-7">
+              <div className="flex items-center gap-3">
+                <div className="grid h-10 w-10 place-items-center rounded-control bg-primary-100 text-primary-700">
+                  <Target size={20} aria-hidden="true" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-semibold">Career aspiration</h2>
+                  <p className="text-sm text-neutral-600">
+                    Your current proficiency compared with your target.
+                  </p>
+                </div>
+              </div>
+              {row.careerAspiration?.targetRole ? (
+                <div className="mt-6 space-y-5">
+                  <dl className="grid gap-4 rounded-panel border border-neutral-200 bg-neutral-100/60 p-4 sm:grid-cols-2">
+                    <div>
+                      <dt className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
+                        Next milestone
+                      </dt>
+                      <dd className="mt-1 font-semibold">
+                        {row.careerAspiration.targetRole}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
+                        Target timeframe
+                      </dt>
+                      <dd className="mt-1 font-semibold">
+                        {careerTimeframeLabel(
+                          row.careerAspiration.targetTimeframe,
+                        ) || 'Not selected'}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
+                        Target capability
+                      </dt>
+                      <dd className="mt-1 font-semibold">
+                        {row.careerAspiration.targetCapability || 'Not selected'}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
+                        Secondary interest
+                      </dt>
+                      <dd className="mt-1 font-semibold">
+                        {row.careerAspiration.secondaryCapability || 'None'}
+                      </dd>
+                    </div>
+                  </dl>
+                  <div>
+                    <h3 className="text-sm font-semibold text-neutral-900">
+                      Skill targets
+                    </h3>
+                    <div className="mt-3 space-y-3">
+                      {row.careerAspiration.targetSkills.map((target) => {
+                        const current = row.skills.find(
+                          (rating) =>
+                            rating.skillId === target.skillId &&
+                            rating.source === 'SELF_REPORTED',
+                        );
+                        return (
+                          <div
+                            className="rounded-control border border-neutral-200 p-4"
+                            key={target.skillId}
+                          >
+                            <p className="font-semibold">{target.skill.name}</p>
+                            <p className="mt-1 text-sm text-neutral-600">
+                              {proficiencyComparison(
+                                current?.proficiency,
+                                target.targetProficiency,
+                              )}
+                            </p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  {row.careerAspiration.notes && (
+                    <p className="text-sm leading-6 text-neutral-600">
+                      {row.careerAspiration.notes}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="mt-5">
+                  <Empty
+                    compact
+                    title="No career aspiration yet"
+                    body="Complete Step 6 of your profile to define a measurable next milestone."
+                    href="/my-profile"
+                    label="Add career aspiration"
+                  />
+                </div>
+              )}
+            </section>
+          )}
         </div>
         <aside className="space-y-5">
           <div className="card p-6">

@@ -32,6 +32,21 @@ export async function GET() {
         skills: { include: { skill: true } },
         tools: { include: { tool: true } },
         projects: true,
+        careerAspiration: {
+          select: {
+            targetCapability: true,
+            targetRole: true,
+            targetTimeframe: true,
+            secondaryCapability: true,
+            notes: true,
+            targetSkills: {
+              select: {
+                targetProficiency: true,
+                skill: { select: { name: true } },
+              },
+            },
+          },
+        },
         certifications: {
           select: {
             id: true,
@@ -170,7 +185,6 @@ export async function POST(req: NextRequest) {
         experienceYearsEstimate: normalizeExperience(d.experience),
         leadershipBracketRaw: d.leadership,
         leadershipYearsEstimate: normalizeExperience(d.leadership),
-        careerJourneyRaw: d.journey,
         draftData: d,
         profileStatus: 'SUBMITTED',
         profileCompleted: true,
@@ -178,6 +192,37 @@ export async function POST(req: NextRequest) {
         lastProfileUpdate: new Date(),
       },
     });
+    await tx.careerAspiration.upsert({
+      where: { leaderId },
+      update: {
+        targetCapability: d.careerAspiration.targetCapability,
+        targetRole: d.careerAspiration.targetRole,
+        targetTimeframe: d.careerAspiration.targetTimeframe,
+        secondaryCapability: d.careerAspiration.secondaryCapability,
+        notes: d.careerAspiration.notes,
+      },
+      create: {
+        leaderId,
+        targetCapability: d.careerAspiration.targetCapability,
+        targetRole: d.careerAspiration.targetRole,
+        targetTimeframe: d.careerAspiration.targetTimeframe,
+        secondaryCapability: d.careerAspiration.secondaryCapability,
+        notes: d.careerAspiration.notes,
+      },
+    });
+    await tx.careerAspirationSkill.deleteMany({ where: { leaderId } });
+    for (const target of d.careerAspiration.targetSkills) {
+      const skill = await tx.skill.findUniqueOrThrow({
+        where: { name: target.name },
+      });
+      await tx.careerAspirationSkill.create({
+        data: {
+          leaderId,
+          skillId: skill.id,
+          targetProficiency: target.targetProficiency,
+        },
+      });
+    }
     await tx.project.deleteMany({ where: { leaderId } });
     for (const project of d.projects)
       await tx.project.create({

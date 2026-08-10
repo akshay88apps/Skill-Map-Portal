@@ -1,4 +1,16 @@
 {
+  "capabilityOrder": [
+    "AI & Autonomous Systems",
+    "Data Platforms & Intelligence",
+    "Platform Engineering",
+    "Product Engineering",
+    "Experience Engineering",
+    "Enterprise Platforms",
+    "Digital Trust",
+    "Customer Engineering",
+    "Innovation Lab",
+    "Product Strategy & Venture Studio"
+  ],
   "categoryToCapability": {
     "Microsoft Technologies": "Product Engineering",
     "Microsoft Business Applications": "Enterprise Platforms",
@@ -14,6 +26,12 @@
     "QA & Testing": "Product Engineering",
     "UI/UX Design": "Experience Engineering",
     "Security & Cybersecurity": "Digital Trust"
+  },
+  "categoryDisplayLabels": {
+    "DevOps & Cloud Engineering": "DevOps & Cloud Engineering (incl. IAM)"
+  },
+  "capabilityAssignmentLabels": {
+    "Digital Trust": "From your selected skills — new practice area, still building bench"
   },
   "manualCapabilities": [
     {

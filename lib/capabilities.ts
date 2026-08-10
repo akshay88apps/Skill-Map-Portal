@@ -1,20 +1,82 @@
 import capabilityConfig from '@/data/capability-mapping.json';
 
-export const categoryCapabilityMap = capabilityConfig.categoryToCapability;
+export type CapabilityMappingConfig = {
+  capabilityOrder?: readonly string[];
+  categoryToCapability: Readonly<Record<string, string>>;
+  categoryDisplayLabels?: Readonly<Record<string, string>>;
+  capabilityAssignmentLabels?: Readonly<Record<string, string>>;
+  manualCapabilities: ReadonlyArray<{ value: string; label: string }>;
+};
+
+export const capabilityMappingConfig: CapabilityMappingConfig = capabilityConfig;
+export const categoryCapabilityMap = capabilityMappingConfig.categoryToCapability;
 export type SkillDerivedCapability =
   (typeof categoryCapabilityMap)[keyof typeof categoryCapabilityMap];
 
-export const manualCapabilityOptions = capabilityConfig.manualCapabilities;
+export const manualCapabilityOptions = capabilityMappingConfig.manualCapabilities;
 export type ManualCapabilityTag =
   (typeof manualCapabilityOptions)[number]['value'];
 
-export const skillDerivedCapabilities = [
-  ...new Set(Object.values(categoryCapabilityMap)),
-];
-export const capabilityNames = [
-  ...skillDerivedCapabilities,
-  ...manualCapabilityOptions.map((option) => option.label),
-];
+function orderedCapabilities(
+  names: readonly string[],
+  preferredOrder: readonly string[] = [],
+) {
+  const available = new Set(names);
+  return [
+    ...preferredOrder.filter((name) => available.has(name)),
+    ...names.filter((name) => !preferredOrder.includes(name)),
+  ];
+}
+
+const mappedCapabilityNames = [...new Set(Object.values(categoryCapabilityMap))];
+export const skillDerivedCapabilities = orderedCapabilities(
+  mappedCapabilityNames,
+  capabilityMappingConfig.capabilityOrder,
+);
+export const capabilityNames = orderedCapabilities(
+  [
+    ...mappedCapabilityNames,
+    ...manualCapabilityOptions.map((option) => option.label),
+  ],
+  capabilityMappingConfig.capabilityOrder,
+);
+
+export type CapabilityReferenceRow = {
+  name: string;
+  categories: string[];
+  assignment: string;
+  kind: 'skill-derived' | 'manual';
+};
+
+export function buildCapabilityReferenceRows(
+  config: CapabilityMappingConfig = capabilityMappingConfig,
+): CapabilityReferenceRow[] {
+  const mappedNames = [...new Set(Object.values(config.categoryToCapability))];
+  const manualNames = config.manualCapabilities.map((option) => option.label);
+  const names = orderedCapabilities(
+    [...mappedNames, ...manualNames],
+    config.capabilityOrder,
+  );
+
+  return names.map((name) => {
+    const categories = Object.entries(config.categoryToCapability)
+      .filter(([, capability]) => capability === name)
+      .map(
+        ([category]) => config.categoryDisplayLabels?.[category] || category,
+      );
+    const kind = categories.length ? 'skill-derived' : 'manual';
+    return {
+      name,
+      categories,
+      kind,
+      assignment:
+        config.capabilityAssignmentLabels?.[name] ||
+        (kind === 'skill-derived'
+          ? 'From your selected skills'
+          : 'Tagged by HR/Admin'),
+    };
+  });
+}
 
 const manualLabels = new Map(
   manualCapabilityOptions.map((option) => [option.value, option.label]),

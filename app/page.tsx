@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { Sparkles } from 'lucide-react';
+import { CapabilityMap } from '@/components/capability-map';
 import { DashboardHeader } from '@/components/dashboard-header';
 import { Empty, PanelHeader, RoleBadge, Stat } from '@/components/ui';
 import { currentIdentity } from '@/lib/authz';
@@ -28,6 +29,8 @@ export default async function Home() {
     <>
       <DashboardHeader name={displayName} />
       <div className="page-shell space-y-6">
+        <CapabilityMap defaultOpen={!dashboard.viewerHasSkills} />
+
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <Stat
             label="Leader profiles"

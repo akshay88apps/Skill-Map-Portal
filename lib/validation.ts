@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { departmentOptions } from '@/lib/departments';
 import { isTaxonomyName } from '@/lib/taxonomy';
 import { isExperienceDuration } from '@/lib/experience';
+import { careerTimeframeOptions } from '@/lib/career-aspiration';
 
 const taxonomySelection = z
   .string()
@@ -15,6 +16,44 @@ const optionalDepartmentSelection = z.preprocess(
   (value) => (value === '' ? undefined : value),
   departmentSelection.optional(),
 );
+const careerTimeframeSelection = z.enum(
+  careerTimeframeOptions.map((option) => option.value) as [
+    (typeof careerTimeframeOptions)[number]['value'],
+    ...(typeof careerTimeframeOptions)[number]['value'][],
+  ],
+);
+const aspirationSkillsInput = z
+  .array(
+    z.object({
+      name: taxonomySelection,
+      targetProficiency: z.number().int().min(1).max(5),
+    }),
+  )
+  .min(1)
+  .max(50)
+  .refine(
+    (skills) => new Set(skills.map((skill) => skill.name)).size === skills.length,
+    'Target skills must be unique',
+  );
+export const careerAspirationInput = z
+  .object({
+    targetCapability: optionalDepartmentSelection,
+    targetRole: z.string().trim().min(1).max(60),
+    targetSkills: aspirationSkillsInput,
+    targetTimeframe: careerTimeframeSelection,
+    secondaryCapability: optionalDepartmentSelection,
+    notes: z.string().trim().max(300).optional(),
+  })
+  .refine(
+    (aspiration) =>
+      !aspiration.targetCapability ||
+      !aspiration.secondaryCapability ||
+      aspiration.targetCapability !== aspiration.secondaryCapability,
+    {
+      message: 'Secondary capability must differ from target capability',
+      path: ['secondaryCapability'],
+    },
+  );
 export const leaderInput = z.object({
   fullName: z.string().min(2).max(120),
   preferredName: z.string().max(80).optional().nullable(),
@@ -23,7 +62,6 @@ export const leaderInput = z.object({
   jobTitle: z.string().max(100).optional().nullable(),
   experienceRaw: z.string().max(40).optional().nullable(),
   leadershipBracketRaw: z.string().max(40).optional().nullable(),
-  careerJourneyRaw: z.string().max(8000).optional().nullable(),
   updatedAt: z.string().datetime().optional(),
 });
 export const projectInput = z.object({
@@ -82,7 +120,7 @@ export const profileInput = z.object({
   tools: z.array(taxonomySelection).max(100).optional(),
   otherTools: z.array(otherTerm).max(20).optional(),
   certifications: z.array(profileCertificationInput).max(30).default([]),
-  journey: z.string().max(20000).optional(),
+  careerAspiration: careerAspirationInput,
   ratedSkills: z
     .array(
       z.object({
@@ -102,6 +140,24 @@ export const profileInput = z.object({
     .optional(),
 });
 export const profileDraftInput = profileInput.partial().extend({
+  careerAspiration: z
+    .object({
+      targetCapability: z.string().max(100).optional(),
+      targetRole: z.string().max(60).optional(),
+      targetSkills: z
+        .array(
+          z.object({
+            name: z.string().max(100),
+            targetProficiency: z.number().int().min(1).max(5),
+          }),
+        )
+        .max(50)
+        .optional(),
+      targetTimeframe: z.string().max(40).optional(),
+      secondaryCapability: z.string().max(100).optional(),
+      notes: z.string().max(300).optional(),
+    })
+    .optional(),
   ratedSkills: z
     .array(
       z.object({

@@ -21,16 +21,33 @@ import {
   isExperienceDuration,
   parseExperienceDuration,
 } from '@/lib/experience';
+import {
+  careerTimeframeOptions,
+  isCareerTimeframe,
+  type CareerTimeframe,
+} from '@/lib/career-aspiration';
 const steps = [
   'Basic info',
   'Experience',
   'Projects',
   'Skills',
   'Certifications',
-  'Career journey',
+  'Career Aspiration',
 ];
 const levels = ['', 'Novice', 'Familiar', 'Proficient', 'Advanced', 'Expert'];
 type RatedSkill = { name: string; proficiency: number; otherName?: string };
+export type DraftAspirationSkill = {
+  name: string;
+  targetProficiency: number;
+};
+export type DraftCareerAspiration = {
+  targetCapability?: string;
+  targetRole?: string;
+  targetSkills: DraftAspirationSkill[];
+  targetTimeframe?: CareerTimeframe | '';
+  secondaryCapability?: string;
+  notes?: string;
+};
 export type DraftProject = {
   name: string;
   description: string;
@@ -54,7 +71,7 @@ type Draft = {
   leadership?: string;
   projects: DraftProject[];
   certifications: DraftCertification[];
-  journey?: string;
+  careerAspiration: DraftCareerAspiration;
   ratedSkills: RatedSkill[];
 };
 type TextKey = Exclude<
@@ -67,6 +84,7 @@ type LegacyDraft = Omit<Partial<Draft>, 'projects'> & {
   otherTools?: unknown;
   projects?: unknown;
   certs?: unknown;
+  journey?: unknown;
 };
 
 function newCertificationId() {
@@ -94,11 +112,47 @@ function certificationsFromProfile(profile: {
   }));
 }
 
+function careerAspirationFromProfile(profile: {
+  careerAspiration?: {
+    targetCapability?: string | null;
+    targetRole?: string | null;
+    targetTimeframe?: string | null;
+    secondaryCapability?: string | null;
+    notes?: string | null;
+    targetSkills?: Array<{
+      targetProficiency: number;
+      skill: { name: string };
+    }>;
+  } | null;
+}): DraftCareerAspiration {
+  const aspiration = profile.careerAspiration;
+  return {
+    targetCapability: isDepartment(aspiration?.targetCapability)
+      ? aspiration.targetCapability
+      : '',
+    targetRole: aspiration?.targetRole || '',
+    targetSkills: (aspiration?.targetSkills || [])
+      .filter((target) => isTaxonomyName(target.skill.name))
+      .map((target) => ({
+        name: target.skill.name,
+        targetProficiency: target.targetProficiency,
+      })),
+    targetTimeframe: isCareerTimeframe(aspiration?.targetTimeframe)
+      ? aspiration.targetTimeframe
+      : '',
+    secondaryCapability: isDepartment(aspiration?.secondaryCapability)
+      ? aspiration.secondaryCapability
+      : '',
+    notes: aspiration?.notes || '',
+  };
+}
+
 export function normalizedDraft(raw: LegacyDraft): Draft {
   const profileDraft = { ...raw };
   delete profileDraft.tools;
   delete profileDraft.otherTools;
   delete profileDraft.certs;
+  delete profileDraft.journey;
   const ratedSkills = (raw.ratedSkills || []).map((skill) => {
     if (isTaxonomyName(skill.name))
       return skill;
@@ -146,12 +200,45 @@ export function normalizedDraft(raw: LegacyDraft): Draft {
           .filter(Boolean)
           .map((name) => ({ clientId: newCertificationId(), name }))
       : [];
+  const rawAspiration: Partial<DraftCareerAspiration> =
+    raw.careerAspiration || {
+      notes:
+        typeof raw.journey === 'string'
+          ? raw.journey.trim().slice(0, 300)
+          : '',
+    };
+  const careerAspiration: DraftCareerAspiration = {
+    targetCapability: isDepartment(rawAspiration.targetCapability)
+      ? rawAspiration.targetCapability
+      : '',
+    targetRole: rawAspiration.targetRole || '',
+    targetSkills: (rawAspiration.targetSkills || [])
+      .filter(
+        (target) =>
+          isTaxonomyName(target.name) &&
+          Number.isInteger(target.targetProficiency) &&
+          target.targetProficiency >= 1 &&
+          target.targetProficiency <= 5,
+      )
+      .map((target) => ({
+        name: target.name,
+        targetProficiency: target.targetProficiency,
+      })),
+    targetTimeframe: isCareerTimeframe(rawAspiration.targetTimeframe)
+      ? rawAspiration.targetTimeframe
+      : '',
+    secondaryCapability: isDepartment(rawAspiration.secondaryCapability)
+      ? rawAspiration.secondaryCapability
+      : '',
+    notes: (rawAspiration.notes || '').slice(0, 300),
+  };
   return {
     ...profileDraft,
     experience: canonicalExperienceDuration(raw.experience),
     department: isDepartment(raw.department) ? raw.department : '',
     projects,
     certifications,
+    careerAspiration,
     ratedSkills: ratedSkills.length
       ? ratedSkills
       : [{ name: '', proficiency: 3 }],
@@ -173,6 +260,7 @@ export default function Wizard() {
     return {
       projects: [],
       certifications: [],
+      careerAspiration: { targetSkills: [] },
       ratedSkills: [{ name: '', proficiency: 3 }],
     };
   });
@@ -216,6 +304,7 @@ export default function Wizard() {
               }),
             ),
             certifications: certificationsFromProfile(profile),
+            careerAspiration: careerAspirationFromProfile(profile),
           }));
       })
       .catch(() => undefined);
@@ -322,6 +411,17 @@ export default function Wizard() {
             <p className="mt-1 text-sm text-neutral-600">
               Help colleagues understand where you can make the greatest impact.
             </p>
+            {(step === 0 || step === 3) && (
+              <a
+                className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-primary-700 underline-offset-4 hover:underline"
+                href="/#capability-map"
+                target="_blank"
+                rel="noreferrer"
+              >
+                How this works: view the capability map
+                <ExternalLink size={14} aria-hidden="true" />
+              </a>
+            )}
             <div className="mt-8 space-y-5">
               {step === 0 && (
                 <>
@@ -489,11 +589,11 @@ export default function Wizard() {
                 />
               )}
               {step === 5 && (
-                <Area
-                  label="Career journey"
-                  value={data.journey}
-                  onChange={(v) => set('journey', v)}
-                  placeholder="Share the roles and turning points that shaped your leadership."
+                <CareerAspirationField
+                  value={data.careerAspiration}
+                  onChange={(careerAspiration) =>
+                    persist({ ...data, careerAspiration })
+                  }
                 />
               )}
             </div>
@@ -520,7 +620,19 @@ export default function Wizard() {
                   (step === 4 &&
                     data.certifications.some(
                       (certification) => !certification.name.trim(),
-                    ))
+                    )) ||
+                  (step === 5 &&
+                    (!data.careerAspiration.targetRole?.trim() ||
+                      !isCareerTimeframe(
+                        data.careerAspiration.targetTimeframe,
+                      ) ||
+                      !data.careerAspiration.targetSkills.length ||
+                      data.careerAspiration.targetSkills.some(
+                        (target) =>
+                          !isTaxonomyName(target.name) ||
+                          target.targetProficiency < 1 ||
+                          target.targetProficiency > 5,
+                      )))
                 }
                 onClick={() => (step < 5 ? setStep((x) => x + 1) : submit())}
               >
@@ -1013,6 +1125,248 @@ export function DepartmentField({
     </label>
   );
 }
+
+export function CareerAspirationField({
+  value,
+  onChange,
+}: {
+  value: DraftCareerAspiration;
+  onChange: (value: DraftCareerAspiration) => void;
+}) {
+  const targetSkills = value.targetSkills || [];
+  const updateTargetSkill = (
+    index: number,
+    change: Partial<DraftAspirationSkill>,
+  ) =>
+    onChange({
+      ...value,
+      targetSkills: targetSkills.map((target, targetIndex) =>
+        targetIndex === index ? { ...target, ...change } : target,
+      ),
+    });
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-semibold text-neutral-900">
+          Define your next measurable milestone
+        </h3>
+        <p className="mt-1 text-sm text-neutral-600">
+          These targets compare your current skills with where you want to be
+          and can be included in future quarterly KPI handovers.
+        </p>
+      </div>
+
+      <label className="block">
+        <span className="mb-2 block text-sm font-semibold text-neutral-800">
+          Target Capability <span className="font-normal text-neutral-500">(recommended)</span>
+        </span>
+        <select
+          aria-label="Target Capability"
+          className="input"
+          value={value.targetCapability || ''}
+          onChange={(event) =>
+            onChange({
+              ...value,
+              targetCapability: event.target.value,
+              secondaryCapability:
+                event.target.value === value.secondaryCapability
+                  ? ''
+                  : value.secondaryCapability,
+            })
+          }
+        >
+          <option value="">Select a target capability</option>
+          {departmentOptions.map((capability) => (
+            <option value={capability} key={capability}>
+              {capability}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label className="block">
+        <span className="mb-2 flex items-center justify-between gap-3 text-sm font-semibold text-neutral-800">
+          <span>
+            Target Role / Next Milestone{' '}
+            <span className="text-error-700">*</span>
+          </span>
+          <span className="text-xs font-normal text-neutral-500">
+            {(value.targetRole || '').length}/60
+          </span>
+        </span>
+        <input
+          aria-label="Target Role / Next Milestone"
+          className="input"
+          maxLength={60}
+          value={value.targetRole || ''}
+          onChange={(event) =>
+            onChange({ ...value, targetRole: event.target.value })
+          }
+          placeholder="e.g. Lead a platform modernisation programme"
+        />
+      </label>
+
+      <fieldset>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <legend className="text-sm font-semibold text-neutral-800">
+              Target Skills to Develop <span className="text-error-700">*</span>
+            </legend>
+            <p className="mt-1 text-xs text-neutral-600">
+              Choose HR-taxonomy skills and the proficiency you intend to reach.
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={targetSkills.some((target) => !target.name)}
+            onClick={() =>
+              onChange({
+                ...value,
+                targetSkills: [
+                  ...targetSkills,
+                  { name: '', targetProficiency: 3 },
+                ],
+              })
+            }
+          >
+            <Plus size={16} className="mr-1" />
+            Add target skill
+          </Button>
+        </div>
+        <div className="mt-4 space-y-3">
+          {targetSkills.map((target, index) => (
+            <div
+              className="grid gap-2 rounded-panel border border-neutral-200 bg-neutral-100/60 p-3 sm:grid-cols-[1fr_210px_40px]"
+              key={index}
+            >
+              <TaxonomyCombobox
+                label={`Target skill ${index + 1}`}
+                value={target.name}
+                excluded={targetSkills
+                  .filter((_, targetIndex) => targetIndex !== index)
+                  .map((other) => other.name)
+                  .filter(isTaxonomyName)}
+                includeOther={false}
+                onSelect={(name) => updateTargetSkill(index, { name })}
+              />
+              <select
+                aria-label={`Target proficiency for skill ${index + 1}`}
+                className="input"
+                value={target.targetProficiency}
+                onChange={(event) =>
+                  updateTargetSkill(index, {
+                    targetProficiency: Number(event.target.value),
+                  })
+                }
+              >
+                {levels.slice(1).map((label, levelIndex) => (
+                  <option value={levelIndex + 1} key={label}>
+                    {levelIndex + 1} — {label}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                aria-label={`Remove target skill ${index + 1}`}
+                className="icon-button-destructive"
+                onClick={() =>
+                  onChange({
+                    ...value,
+                    targetSkills: targetSkills.filter(
+                      (_, targetIndex) => targetIndex !== index,
+                    ),
+                  })
+                }
+              >
+                <Trash2 size={18} />
+              </button>
+            </div>
+          ))}
+          {!targetSkills.length && (
+            <p className="rounded-control border border-dashed border-neutral-300 p-4 text-sm text-neutral-600">
+              Add at least one skill to make this aspiration measurable.
+            </p>
+          )}
+        </div>
+      </fieldset>
+
+      <label className="block">
+        <span className="mb-2 block text-sm font-semibold text-neutral-800">
+          Target Timeframe <span className="text-error-700">*</span>
+        </span>
+        <select
+          aria-label="Target Timeframe"
+          className="input"
+          value={value.targetTimeframe || ''}
+          onChange={(event) =>
+            onChange({
+              ...value,
+              targetTimeframe: event.target.value as CareerTimeframe | '',
+            })
+          }
+        >
+          <option value="" disabled>
+            Select a timeframe
+          </option>
+          {careerTimeframeOptions.map((option) => (
+            <option value={option.value} key={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label className="block">
+        <span className="mb-2 block text-sm font-semibold text-neutral-800">
+          Secondary Capability Interest{' '}
+          <span className="font-normal text-neutral-500">(optional)</span>
+        </span>
+        <select
+          aria-label="Secondary Capability Interest"
+          className="input"
+          value={value.secondaryCapability || ''}
+          onChange={(event) =>
+            onChange({ ...value, secondaryCapability: event.target.value })
+          }
+        >
+          <option value="">No secondary capability</option>
+          {departmentOptions
+            .filter((capability) => capability !== value.targetCapability)
+            .map((capability) => (
+              <option value={capability} key={capability}>
+                {capability}
+              </option>
+            ))}
+        </select>
+      </label>
+
+      <label className="block">
+        <span className="mb-2 flex items-center justify-between gap-3 text-sm font-semibold text-neutral-800">
+          <span>
+            Notes <span className="font-normal text-neutral-500">(optional)</span>
+          </span>
+          <span className="text-xs font-normal text-neutral-500">
+            {(value.notes || '').length}/300
+          </span>
+        </span>
+        <textarea
+          aria-label="Career aspiration notes"
+          className="input resize-y"
+          maxLength={300}
+          rows={4}
+          value={value.notes || ''}
+          onChange={(event) =>
+            onChange({ ...value, notes: event.target.value })
+          }
+          placeholder="Add context that is not captured by the structured targets."
+        />
+      </label>
+    </div>
+  );
+}
+
 function Area(p: {
   label: string;
   value?: string;

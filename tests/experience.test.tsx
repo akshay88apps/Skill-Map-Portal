@@ -30,7 +30,15 @@ describe('total relevant experience', () => {
   });
 
   it('requires a bounded duration on profile submission', () => {
-    const base = { fullName: 'Test Leader', ratedSkills: [] };
+    const base = {
+      fullName: 'Test Leader',
+      ratedSkills: [],
+      careerAspiration: {
+        targetRole: 'Engineering Lead',
+        targetSkills: [{ name: 'Azure Functions', targetProficiency: 4 }],
+        targetTimeframe: 'SIX_TO_TWELVE_MONTHS',
+      },
+    };
     expect(profileInput.safeParse(base).success).toBe(false);
     expect(
       profileInput.safeParse({ ...base, experience: '40 years 12 months' })

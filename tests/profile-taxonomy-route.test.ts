@@ -18,6 +18,8 @@ const mocks = vi.hoisted(() => {
     leaderTool: { deleteMany: vi.fn(), create: vi.fn() },
     tool: { upsert: vi.fn() },
     leaderSkill: { deleteMany: vi.fn(), upsert: vi.fn() },
+    careerAspiration: { upsert: vi.fn() },
+    careerAspirationSkill: { deleteMany: vi.fn(), create: vi.fn() },
     skill: { findUniqueOrThrow: vi.fn() },
     reviewItem: { create: vi.fn() },
     auditLog: { create: vi.fn() },
@@ -45,6 +47,15 @@ vi.mock('@/lib/certification-storage', () => ({
 
 import { POST } from '@/app/api/profile/route';
 
+const validCareerAspiration = {
+  targetCapability: 'Platform Engineering',
+  targetRole: 'Platform Engineering Lead',
+  targetSkills: [{ name: 'Azure Functions', targetProficiency: 5 }],
+  targetTimeframe: 'SIX_TO_TWELVE_MONTHS',
+  secondaryCapability: 'Product Engineering',
+  notes: 'Build stronger platform leadership evidence.',
+};
+
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.requireIdentity.mockResolvedValue({
@@ -56,6 +67,9 @@ beforeEach(() => {
     for (const method of Object.values(group))
       if (typeof method === 'function') method.mockResolvedValue({});
   mocks.tx.certification.findMany.mockResolvedValue([]);
+  mocks.tx.skill.findUniqueOrThrow.mockResolvedValue({
+    id: 'skill-azure-functions',
+  });
   mocks.uploadCertificationFile.mockResolvedValue(
     'leader-1/generated-certificate.webp',
   );
@@ -70,6 +84,7 @@ describe('profile taxonomy submission', () => {
         fullName: 'Test Leader',
         experience: '10 years 0 months',
         ratedSkills: [],
+        careerAspiration: validCareerAspiration,
         tools: [],
         projects: [
           {
@@ -86,7 +101,9 @@ describe('profile taxonomy submission', () => {
     const response = await POST(request);
 
     expect(response.status).toBe(200);
-    expect(mocks.tx.skill.findUniqueOrThrow).not.toHaveBeenCalled();
+    expect(mocks.tx.skill.findUniqueOrThrow).toHaveBeenCalledWith({
+      where: { name: 'Azure Functions' },
+    });
     expect(mocks.tx.tool.upsert).not.toHaveBeenCalled();
     expect(mocks.tx.project.create).toHaveBeenCalledWith({
       data: {
@@ -134,6 +151,7 @@ describe('profile taxonomy submission', () => {
         fullName: 'Test Leader',
         experience: '10 years 0 months',
         ratedSkills: [],
+        careerAspiration: validCareerAspiration,
         projects: [],
         certifications: [
           {
@@ -195,6 +213,7 @@ describe('profile taxonomy submission', () => {
       fullName: 'Test Leader',
       experience: '10 years 0 months',
       ratedSkills: [],
+      careerAspiration: validCareerAspiration,
       projects: [],
       certifications: [
         { clientId: 'draft-image-1', name: 'Cloud certification' },
@@ -250,5 +269,52 @@ describe('profile taxonomy submission', () => {
     expect(
       mocks.tx.certification.create.mock.calls[0][0].data,
     ).not.toHaveProperty('imageData');
+  });
+
+  it('stores career aspiration targets in the leader-skill join table', async () => {
+    const request = new NextRequest('http://localhost/api/profile', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        fullName: 'Test Leader',
+        experience: '10 years 0 months',
+        ratedSkills: [],
+        projects: [],
+        certifications: [],
+        careerAspiration: validCareerAspiration,
+      }),
+    });
+
+    const response = await POST(request);
+
+    expect(response.status).toBe(200);
+    expect(mocks.tx.careerAspiration.upsert).toHaveBeenCalledWith({
+      where: { leaderId: 'leader-1' },
+      update: {
+        targetCapability: 'Platform Engineering',
+        targetRole: 'Platform Engineering Lead',
+        targetTimeframe: 'SIX_TO_TWELVE_MONTHS',
+        secondaryCapability: 'Product Engineering',
+        notes: 'Build stronger platform leadership evidence.',
+      },
+      create: {
+        leaderId: 'leader-1',
+        targetCapability: 'Platform Engineering',
+        targetRole: 'Platform Engineering Lead',
+        targetTimeframe: 'SIX_TO_TWELVE_MONTHS',
+        secondaryCapability: 'Product Engineering',
+        notes: 'Build stronger platform leadership evidence.',
+      },
+    });
+    expect(mocks.tx.careerAspirationSkill.deleteMany).toHaveBeenCalledWith({
+      where: { leaderId: 'leader-1' },
+    });
+    expect(mocks.tx.careerAspirationSkill.create).toHaveBeenCalledWith({
+      data: {
+        leaderId: 'leader-1',
+        skillId: 'skill-azure-functions',
+        targetProficiency: 5,
+      },
+    });
   });
 });

@@ -8,6 +8,8 @@
 | `profileStatus` | workflow enum | Invitation, draft, review, publication, and deactivation state. |
 | `additionalCapabilityTags` | `ManualCapabilityTag[]` | Optional admin-managed function tags. Valid values are Customer Engineering, Innovation Lab, and Product Strategy & Venture Studio. These are not editable in the leader wizard. |
 
+`careerJourneyRaw` was replaced by the structured Career Aspiration model. The forward migration copies any non-empty legacy text into `CareerAspiration.legacyJourneyBackup` before dropping the old leader column.
+
 ## Skill taxonomy
 
 `data/tech-skills-taxonomy.json` is the canonical HR source for skill and tool selection. After the 2026-08-10 capability update it contains 14 categories, 169 listed entries, and 167 unique names. `Power BI` and `Microsoft Fabric` appear in two source categories; the first-listed category remains canonical because `Skill.name` is globally unique.
@@ -46,6 +48,26 @@ The remaining three CTO capabilities have no skill-category mapping and are stor
 - `PRODUCT_STRATEGY_VENTURE_STUDIO` → Product Strategy & Venture Studio
 
 The Capability Matrix always returns all 10 rows, including zero-headcount rows. Manual rows carry a “Manually tagged” source indicator.
+
+The Overview page’s static Capability Map is generated from the same `data/capability-mapping.json` configuration used by the Capability Matrix. Capability order, category membership, display labels, assignment explanations, and HR/Admin-only capabilities therefore update from that single source; the Overview table must not maintain a second mapping. It opens by default for a viewer with no saved skills and remains collapsible for returning users.
+
+## Career aspiration
+
+`CareerAspiration` is a one-to-one structured extension of `Leader`. It replaces the former narrative Career Journey field and is designed for later read-only KPI handover rather than a direct QuikITScale integration.
+
+| Field | Type | Meaning |
+|---|---|---|
+| `leaderId` | unique FK → `Leader.id` | Leader who owns the aspiration. |
+| `targetCapability` | nullable governed capability name | Recommended primary capability target from the same ten-value list used by Department. |
+| `targetRole` | `varchar(60)` | Required next role or milestone for completed submissions. |
+| `targetTimeframe` | `CareerTimeframe` | One of 0–6 months, 6–12 months, 1–2 years, or 2+ years. |
+| `secondaryCapability` | nullable governed capability name | Optional capability interest; database and API rules prevent it matching the primary target. |
+| `notes` | nullable `varchar(300)` | Optional bounded context. |
+| `legacyJourneyBackup` | nullable text | Migration-only preservation of the removed `Leader.careerJourneyRaw` value; it is not an editable wizard field. |
+
+`CareerAspirationSkill` is the measurable target join table. Its composite key is (`leaderId`, `skillId`), `skillId` references the canonical `Skill` model, and `targetProficiency` is constrained to 1–5. It deliberately does not create a second skill taxonomy.
+
+The read-only `v_leader_aspiration` view exposes aspiration fields, target skills, current self-rated proficiency, and target proficiency for the future KPI handover. `v_leader_skill_snapshot` exposes the corresponding current self-rated skill rows. See `docs/HANDOVER.md`.
 
 ## Taxonomy review
 

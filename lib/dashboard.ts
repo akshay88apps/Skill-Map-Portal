@@ -4,6 +4,7 @@ import type { AppRole } from '@/lib/roles';
 
 type DashboardViewer = {
   role: AppRole;
+  leaderId?: string | null;
 };
 
 function quarterOrder(quarter: string) {
@@ -43,7 +44,7 @@ export async function loadDashboardData(viewer: DashboardViewer) {
   const leaderWhere: Prisma.LeaderWhereInput =
     viewer.role === 'ADMIN' ? {} : { profileStatus: 'PUBLISHED' };
 
-  const [leaderRows, skillRows, snapshots] = await Promise.all([
+  const [leaderRows, skillRows, snapshots, viewerSkillCount] = await Promise.all([
     db.leader.findMany({
       where: leaderWhere,
       select: {
@@ -87,6 +88,9 @@ export async function loadDashboardData(viewer: DashboardViewer) {
       where: { leader: leaderWhere },
       select: { quarter: true, skillCount: true },
     }),
+    viewer.leaderId
+      ? db.leaderSkill.count({ where: { leaderId: viewer.leaderId } })
+      : Promise.resolve(0),
   ]);
 
   const completedProfiles = leaderRows.filter(
@@ -133,6 +137,7 @@ export async function loadDashboardData(viewer: DashboardViewer) {
     skillsNeedingReview: skillRows.filter((skill) => skill.needsReview).length,
     capability,
     quarterlyGrowth: quarterlyGrowth(snapshots),
+    viewerHasSkills: viewerSkillCount > 0,
     recentLeaders: leaderRows.slice(0, 8),
   };
 }
