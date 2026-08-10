@@ -13,6 +13,26 @@ import {
   deleteCertificationFile,
   uploadCertificationFile,
 } from '@/lib/certification-storage';
+import {
+  profileValidationIssues,
+  type ProfileValidationIssue,
+} from '@/lib/profile-validation-errors';
+
+function validationFailure(
+  leaderId: string,
+  issues: ProfileValidationIssue[],
+  code = 'PROFILE_VALIDATION_FAILED',
+  status = 422,
+) {
+  console.warn(
+    'Profile validation rejected',
+    JSON.stringify({ leaderId, code, issues }),
+  );
+  return NextResponse.json(
+    { error: 'Profile validation failed', code, issues },
+    { status },
+  );
+}
 
 async function identity() {
   try {
@@ -104,9 +124,9 @@ export async function POST(req: NextRequest) {
   }
   const parsed = profileInput.safeParse(rawProfile);
   if (!parsed.success)
-    return NextResponse.json(
-      { error: 'Profile validation failed', issues: parsed.error.flatten() },
-      { status: 422 },
+    return validationFailure(
+      leaderId,
+      profileValidationIssues(parsed.error),
     );
   const d = parsed.data;
   const certificationClientIds = new Set(
@@ -117,33 +137,60 @@ export async function POST(req: NextRequest) {
     0,
   );
   if (totalFileBytes > MAX_CERTIFICATION_UPLOAD_BYTES)
-    return NextResponse.json(
-      { error: 'Certificate files must total 30 MB or less' },
-      { status: 422 },
+    return validationFailure(
+      leaderId,
+      [
+        {
+          path: 'certifications',
+          message: 'Certificate files must total 30 MB or less.',
+          code: 'certificate_total_too_large',
+        },
+      ],
+      'CERTIFICATE_VALIDATION_FAILED',
     );
   if (
     [...certificateFiles.keys()].some(
       (clientId) => !certificationClientIds.has(clientId),
     )
   )
-    return NextResponse.json(
-      { error: 'Certificate file does not match a certification' },
-      { status: 422 },
+    return validationFailure(
+      leaderId,
+      [
+        {
+          path: 'certifications',
+          message:
+            'A certificate file no longer matches its certification. Re-select the file and try again.',
+          code: 'certificate_file_mismatch',
+        },
+      ],
+      'CERTIFICATE_VALIDATION_FAILED',
     );
   const preparedFiles = new Map<string, PreparedCertificationFile>();
-  try {
-    for (const [clientId, file] of certificateFiles)
+  for (const [clientId, file] of certificateFiles) {
+    try {
       preparedFiles.set(clientId, await prepareCertificationFile(file));
-  } catch (error) {
-    return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : 'Certificate file validation failed',
-      },
-      { status: 422 },
-    );
+    } catch (error) {
+      const certificationIndex = d.certifications.findIndex(
+        (certification) => certification.clientId === clientId,
+      );
+      return validationFailure(
+        leaderId,
+        [
+          {
+            path:
+              certificationIndex >= 0
+                ? `certifications.${certificationIndex}.file`
+                : 'certifications',
+            message:
+              error instanceof Error
+                ? error.message
+                : 'Certificate file validation failed.',
+            code: 'certificate_file_invalid',
+          },
+        ],
+        'CERTIFICATE_VALIDATION_FAILED',
+      );
+    }
   }
 
   const uploadedFiles = new Map<
@@ -161,9 +208,18 @@ export async function POST(req: NextRequest) {
         deleteCertificationFile(file.blobName),
       ),
     );
-    return NextResponse.json(
-      { error: 'Certificate file could not be stored' },
-      { status: 502 },
+    return validationFailure(
+      leaderId,
+      [
+        {
+          path: 'certifications',
+          message:
+            'Certificate files could not be stored. Your profile was not submitted; please try again.',
+          code: 'certificate_storage_failed',
+        },
+      ],
+      'CERTIFICATE_STORAGE_FAILED',
+      502,
     );
   }
 
@@ -393,7 +449,17 @@ export async function POST(req: NextRequest) {
       error instanceof Error &&
       error.message === 'Certification does not belong to this profile'
     )
-      return NextResponse.json({ error: error.message }, { status: 422 });
+      return validationFailure(
+        leaderId,
+        [
+          {
+            path: 'certifications',
+            message: error.message,
+            code: 'certificate_ownership_invalid',
+          },
+        ],
+        'CERTIFICATE_VALIDATION_FAILED',
+      );
     throw error;
   }
   await Promise.allSettled(

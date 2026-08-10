@@ -26,6 +26,10 @@ import {
   isCareerTimeframe,
   type CareerTimeframe,
 } from '@/lib/career-aspiration';
+import {
+  profileValidationErrorMap,
+  type ProfileValidationIssue,
+} from '@/lib/profile-validation-errors';
 const steps = [
   'Basic info',
   'Experience',
@@ -35,6 +39,31 @@ const steps = [
   'Career Aspiration',
 ];
 const levels = ['', 'Novice', 'Familiar', 'Proficient', 'Advanced', 'Expert'];
+const validationStepPrefixes = [
+  ['fullName', 'preferredName', 'department', 'jobTitle'],
+  ['experience', 'leadership'],
+  ['projects'],
+  ['ratedSkills', 'otherSkills', 'tools', 'otherTools'],
+  ['certifications'],
+  ['careerAspiration'],
+] as const;
+
+function stepForValidationPath(path: string) {
+  const index = validationStepPrefixes.findIndex((prefixes) =>
+    prefixes.some((prefix) => path === prefix || path.startsWith(`${prefix}.`)),
+  );
+  return index >= 0 ? index : 0;
+}
+
+function validationErrorAt(
+  errors: Record<string, string>,
+  path: string,
+) {
+  return (
+    errors[path] ||
+    Object.entries(errors).find(([key]) => key.startsWith(`${path}.`))?.[1]
+  );
+}
 type RatedSkill = { name: string; proficiency: number; otherName?: string };
 export type DraftAspirationSkill = {
   name: string;
@@ -249,6 +278,12 @@ export default function Wizard() {
   const [saved, setSaved] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState('');
+  const [messageKind, setMessageKind] = useState<'success' | 'error'>(
+    'success',
+  );
+  const [validationErrors, setValidationErrors] = useState<
+    Record<string, string>
+  >({});
   const [certificationFiles, setCertificationFiles] = useState<
     Record<string, File>
   >({});
@@ -311,6 +346,8 @@ export default function Wizard() {
   }, []);
   const persist = (next: Draft) => {
     setData(next);
+    setValidationErrors({});
+    if (messageKind === 'error') setMessage('');
     localStorage.setItem('skillmap-draft', JSON.stringify(next));
     fetch('/api/profile', {
       method: 'PATCH',
@@ -330,6 +367,7 @@ export default function Wizard() {
   const submit = async () => {
     setSubmitting(true);
     setMessage('');
+    setValidationErrors({});
     try {
       const payload = {
         ...data,
@@ -357,17 +395,49 @@ export default function Wizard() {
         body: form,
       });
       const body = await response.json();
-      if (!response.ok) throw new Error(body.error || 'Submission failed');
+      if (!response.ok) {
+        if (Array.isArray(body.issues) && body.issues.length) {
+          const issues: ProfileValidationIssue[] = body.issues.filter(
+            (issue: unknown): issue is ProfileValidationIssue =>
+              Boolean(
+                issue &&
+                  typeof issue === 'object' &&
+                  typeof (issue as ProfileValidationIssue).path === 'string' &&
+                  typeof (issue as ProfileValidationIssue).message === 'string',
+              ),
+          );
+          if (issues.length) {
+            setValidationErrors(profileValidationErrorMap(issues));
+            setStep(
+              Math.min(
+                ...issues.map((issue: ProfileValidationIssue) =>
+                  stepForValidationPath(issue.path),
+                ),
+              ),
+            );
+            setMessageKind('error');
+            setMessage(
+              issues.length === 1
+                ? `Please correct this field: ${issues[0].message}`
+                : `Please correct ${issues.length} highlighted fields before submitting.`,
+            );
+            return;
+          }
+        }
+        throw new Error(body.error || 'Submission failed');
+      }
       if (Array.isArray(body.certifications)) {
         const next = { ...data, certifications: body.certifications };
         setData(next);
         localStorage.setItem('skillmap-draft', JSON.stringify(next));
       }
       setCertificationFiles({});
+      setMessageKind('success');
       setMessage(
         'Profile submitted. Taxonomy skills were saved and any “Other” skill was sent for HR review.',
       );
     } catch (error) {
+      setMessageKind('error');
       setMessage(error instanceof Error ? error.message : 'Submission failed');
     } finally {
       setSubmitting(false);
@@ -388,10 +458,17 @@ export default function Wizard() {
       <div className="page-shell">
         <div className="mx-auto grid max-w-5xl gap-6 lg:grid-cols-[250px_1fr]">
           <aside className="card h-fit p-4">
-            {steps.map((s, i) => (
+            {steps.map((s, i) => {
+              const errorCount = Object.keys(validationErrors).filter(
+                (path) => stepForValidationPath(path) === i,
+              ).length;
+              return (
               <button
                 key={s}
                 onClick={() => setStep(i)}
+                aria-label={
+                  errorCount ? `${s}: ${errorCount} validation errors` : s
+                }
                 className={`flex w-full items-center gap-3 rounded-control p-3 text-left text-sm transition-colors ${i === step ? 'bg-primary-900 font-semibold text-neutral-50' : i < step ? 'text-primary-700 hover:bg-primary-50' : 'text-neutral-500 hover:bg-neutral-100'}`}
               >
                 <span
@@ -400,8 +477,14 @@ export default function Wizard() {
                   {i < step ? <Check size={14} /> : i + 1}
                 </span>
                 {s}
+                {errorCount > 0 && (
+                  <span className="ml-auto rounded-full bg-error-700 px-2 py-0.5 text-xs font-semibold text-white">
+                    {errorCount}
+                  </span>
+                )}
               </button>
-            ))}
+              );
+            })}
           </aside>
           <section className="card p-6 lg:p-8">
             <p className="eyebrow">
@@ -430,23 +513,27 @@ export default function Wizard() {
                     value={data.fullName}
                     onChange={(v) => set('fullName', v)}
                     placeholder="Your legal or full name"
+                    error={validationErrorAt(validationErrors, 'fullName')}
                   />
                   <Field
                     label="Preferred name"
                     value={data.preferredName}
                     onChange={(v) => set('preferredName', v)}
                     placeholder="What colleagues call you"
+                    error={validationErrorAt(validationErrors, 'preferredName')}
                   />
                   <DepartmentField
                     label="Department"
                     value={data.department}
                     onChange={(v) => set('department', v)}
+                    error={validationErrorAt(validationErrors, 'department')}
                   />
                   <Field
                     label="Job title"
                     value={data.jobTitle}
                     onChange={(v) => set('jobTitle', v)}
                     placeholder="Your current role"
+                    error={validationErrorAt(validationErrors, 'jobTitle')}
                   />
                 </>
               )}
@@ -455,12 +542,14 @@ export default function Wizard() {
                   <ExperienceDurationField
                     value={data.experience}
                     onChange={(v) => set('experience', v)}
+                    error={validationErrorAt(validationErrors, 'experience')}
                   />
                   <Field
                     label="Leadership experience"
                     value={data.leadership}
                     onChange={(v) => set('leadership', v)}
                     placeholder="e.g. 6–10 years"
+                    error={validationErrorAt(validationErrors, 'leadership')}
                   />
                 </>
               )}
@@ -468,6 +557,7 @@ export default function Wizard() {
                 <ProjectsField
                   projects={data.projects}
                   onChange={(projects) => persist({ ...data, projects })}
+                  errors={validationErrors}
                 />
               )}
               {step === 3 && (
@@ -523,6 +613,17 @@ export default function Wizard() {
                                 })
                               }
                             />
+                            {validationErrorAt(
+                              validationErrors,
+                              `ratedSkills.${i}.name`,
+                            ) && (
+                              <p className="text-xs font-semibold text-error-700">
+                                {validationErrorAt(
+                                  validationErrors,
+                                  `ratedSkills.${i}.name`,
+                                )}
+                              </p>
+                            )}
                             {skill.name === OTHER_TAXONOMY_VALUE && (
                               <input
                                 aria-label={`Other skill ${i + 1}`}
@@ -586,6 +687,7 @@ export default function Wizard() {
                       return next;
                     })
                   }
+                  serverErrors={validationErrors}
                 />
               )}
               {step === 5 && (
@@ -594,13 +696,14 @@ export default function Wizard() {
                   onChange={(careerAspiration) =>
                     persist({ ...data, careerAspiration })
                   }
+                  errors={validationErrors}
                 />
               )}
             </div>
             {message && (
               <p
-                role="status"
-                className="mt-6 rounded-control border border-success-700/20 bg-success-50 p-3 text-sm font-semibold text-success-700"
+                role={messageKind === 'error' ? 'alert' : 'status'}
+                className={`mt-6 rounded-control border p-3 text-sm font-semibold ${messageKind === 'error' ? 'border-error-700/20 bg-error-50 text-error-700' : 'border-success-700/20 bg-success-50 text-success-700'}`}
               >
                 {message}
               </p>
@@ -617,6 +720,13 @@ export default function Wizard() {
                 disabled={
                   submitting ||
                   (step === 1 && !isExperienceDuration(data.experience)) ||
+                  (step === 2 &&
+                    data.projects.some(
+                      (project) =>
+                        !project.name.trim() ||
+                        !project.description.trim() ||
+                        !project.techStack.length,
+                    )) ||
                   (step === 4 &&
                     data.certifications.some(
                       (certification) => !certification.name.trim(),
@@ -655,9 +765,11 @@ const experienceMonths = Array.from({ length: 13 }, (_, month) => month);
 export function ExperienceDurationField({
   value = '',
   onChange,
+  error,
 }: {
   value?: string;
   onChange: (value: string) => void;
+  error?: string;
 }) {
   const initial = parseExperienceDuration(canonicalExperienceDuration(value));
   const [years, setYears] = useState(initial ? String(initial.years) : '');
@@ -731,6 +843,9 @@ export function ExperienceDurationField({
           </select>
         </label>
       </div>
+      {error && (
+        <p className="mt-2 text-xs font-semibold text-error-700">{error}</p>
+      )}
     </fieldset>
   );
 }
@@ -738,9 +853,11 @@ export function ExperienceDurationField({
 export function ProjectsField({
   projects,
   onChange,
+  errors = {},
 }: {
   projects: DraftProject[];
   onChange: (projects: DraftProject[]) => void;
+  errors?: Record<string, string>;
 }) {
   const update = (index: number, change: Partial<DraftProject>) =>
     onChange(
@@ -805,23 +922,32 @@ export function ProjectsField({
 
             <div className="mt-4 space-y-4">
               <Field
-                label="Project name"
+                label="Project name *"
                 value={project.name}
                 onChange={(name) => update(index, { name })}
                 placeholder="Enter the project name"
+                error={validationErrorAt(errors, `projects.${index}.name`)}
               />
               <Area
-                label="Project description"
+                label="Project description *"
                 value={project.description}
                 onChange={(description) => update(index, { description })}
                 placeholder="Describe the project, your contribution and the outcome."
                 rows={4}
+                error={validationErrorAt(
+                  errors,
+                  `projects.${index}.description`,
+                )}
               />
               <div>
                 <ProjectTechnologyPicker
                   projectNumber={index + 1}
                   technologies={project.techStack}
                   onChange={(techStack) => update(index, { techStack })}
+                  error={validationErrorAt(
+                    errors,
+                    `projects.${index}.techStack`,
+                  )}
                 />
               </div>
             </div>
@@ -836,13 +962,15 @@ export function CertificationsField({
   files,
   onChange,
   onFileChange,
+  serverErrors = {},
 }: {
   certifications: DraftCertification[];
   files: Record<string, File>;
   onChange: (certifications: DraftCertification[]) => void;
   onFileChange: (clientId: string, file: File | null) => void;
+  serverErrors?: Record<string, string>;
 }) {
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [fileErrors, setFileErrors] = useState<Record<string, string>>({});
   const update = (
     index: number,
     change: Partial<DraftCertification>,
@@ -887,6 +1015,12 @@ export function CertificationsField({
         </div>
       )}
 
+      {serverErrors.certifications && (
+        <p className="mt-3 text-xs font-semibold text-error-700">
+          {serverErrors.certifications}
+        </p>
+      )}
+
       <div className="mt-4 space-y-4">
         {certifications.map((certification, index) => {
           const pendingFile = files[certification.clientId];
@@ -923,6 +1057,10 @@ export function CertificationsField({
                   value={certification.name}
                   onChange={(name) => update(index, { name })}
                   placeholder="e.g. Microsoft Certified: Azure Solutions Architect"
+                  error={validationErrorAt(
+                    serverErrors,
+                    `certifications.${index}.name`,
+                  )}
                 />
                 <div>
                   <span className="mb-2 block text-sm font-semibold text-neutral-800">
@@ -954,7 +1092,7 @@ export function CertificationsField({
                           file.size > MAX_CERTIFICATION_PDF_BYTES
                         )
                           error = 'Choose a PDF no larger than 10 MB.';
-                        setErrors((current) => ({
+                        setFileErrors((current) => ({
                           ...current,
                           [certification.clientId]: error,
                         }));
@@ -974,9 +1112,17 @@ export function CertificationsField({
                   <p className="mt-2 text-xs text-neutral-600">
                     PDF up to 10 MB · JPEG, PNG, or WebP up to 5 MB
                   </p>
-                  {errors[certification.clientId] && (
+                  {(fileErrors[certification.clientId] ||
+                    validationErrorAt(
+                      serverErrors,
+                      `certifications.${index}.file`,
+                    )) && (
                     <p className="mt-2 text-xs font-semibold text-error-700">
-                      {errors[certification.clientId]}
+                      {fileErrors[certification.clientId] ||
+                        validationErrorAt(
+                          serverErrors,
+                          `certifications.${index}.file`,
+                        )}
                     </p>
                   )}
                   {(pendingFile || certification.attachmentFileName) && (
@@ -1009,17 +1155,19 @@ function ProjectTechnologyPicker({
   projectNumber,
   technologies,
   onChange,
+  error,
 }: {
   projectNumber: number;
   technologies: string[];
   onChange: (technologies: string[]) => void;
+  error?: string;
 }) {
   const [pendingTechnology, setPendingTechnology] = useState('');
 
   return (
     <div>
       <span className="mb-2 block text-sm font-semibold text-neutral-800">
-        Tech stack used
+        Tech stack used <span className="text-error-700">*</span>
       </span>
       <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
         <TaxonomyCombobox
@@ -1066,6 +1214,9 @@ function ProjectTechnologyPicker({
           </span>
         ))}
       </div>
+      {error && (
+        <p className="mt-2 text-xs font-semibold text-error-700">{error}</p>
+      )}
     </div>
   );
 }
@@ -1074,11 +1225,13 @@ function Field({
   value = '',
   onChange,
   placeholder,
+  error,
 }: {
   label: string;
   value?: string;
   onChange: (x: string) => void;
   placeholder: string;
+  error?: string;
 }) {
   return (
     <label className="block">
@@ -1087,10 +1240,15 @@ function Field({
       </span>
       <input
         className="input"
+        aria-label={label.replace(/ \*$/, '')}
+        aria-invalid={Boolean(error)}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
       />
+      {error && (
+        <p className="mt-2 text-xs font-semibold text-error-700">{error}</p>
+      )}
     </label>
   );
 }
@@ -1098,10 +1256,12 @@ export function DepartmentField({
   label,
   value = '',
   onChange,
+  error,
 }: {
   label: string;
   value?: string;
   onChange: (value: string) => void;
+  error?: string;
 }) {
   return (
     <label className="block">
@@ -1110,6 +1270,7 @@ export function DepartmentField({
       </span>
       <select
         className="input"
+        aria-invalid={Boolean(error)}
         value={value}
         onChange={(event) => onChange(event.target.value)}
       >
@@ -1122,6 +1283,9 @@ export function DepartmentField({
           </option>
         ))}
       </select>
+      {error && (
+        <p className="mt-2 text-xs font-semibold text-error-700">{error}</p>
+      )}
     </label>
   );
 }
@@ -1129,9 +1293,11 @@ export function DepartmentField({
 export function CareerAspirationField({
   value,
   onChange,
+  errors = {},
 }: {
   value: DraftCareerAspiration;
   onChange: (value: DraftCareerAspiration) => void;
+  errors?: Record<string, string>;
 }) {
   const targetSkills = value.targetSkills || [];
   const updateTargetSkill = (
@@ -1183,6 +1349,11 @@ export function CareerAspirationField({
             </option>
           ))}
         </select>
+        {validationErrorAt(errors, 'careerAspiration.targetCapability') && (
+          <p className="mt-2 text-xs font-semibold text-error-700">
+            {validationErrorAt(errors, 'careerAspiration.targetCapability')}
+          </p>
+        )}
       </label>
 
       <label className="block">
@@ -1205,6 +1376,11 @@ export function CareerAspirationField({
           }
           placeholder="e.g. Lead a platform modernisation programme"
         />
+        {validationErrorAt(errors, 'careerAspiration.targetRole') && (
+          <p className="mt-2 text-xs font-semibold text-error-700">
+            {validationErrorAt(errors, 'careerAspiration.targetRole')}
+          </p>
+        )}
       </label>
 
       <fieldset>
@@ -1251,6 +1427,17 @@ export function CareerAspirationField({
                 includeOther={false}
                 onSelect={(name) => updateTargetSkill(index, { name })}
               />
+              {validationErrorAt(
+                errors,
+                `careerAspiration.targetSkills.${index}.name`,
+              ) && (
+                <p className="text-xs font-semibold text-error-700">
+                  {validationErrorAt(
+                    errors,
+                    `careerAspiration.targetSkills.${index}.name`,
+                  )}
+                </p>
+              )}
               <select
                 aria-label={`Target proficiency for skill ${index + 1}`}
                 className="input"
@@ -1289,6 +1476,11 @@ export function CareerAspirationField({
               Add at least one skill to make this aspiration measurable.
             </p>
           )}
+          {errors['careerAspiration.targetSkills'] && (
+            <p className="text-xs font-semibold text-error-700">
+              {errors['careerAspiration.targetSkills']}
+            </p>
+          )}
         </div>
       </fieldset>
 
@@ -1316,6 +1508,11 @@ export function CareerAspirationField({
             </option>
           ))}
         </select>
+        {validationErrorAt(errors, 'careerAspiration.targetTimeframe') && (
+          <p className="mt-2 text-xs font-semibold text-error-700">
+            {validationErrorAt(errors, 'careerAspiration.targetTimeframe')}
+          </p>
+        )}
       </label>
 
       <label className="block">
@@ -1340,6 +1537,14 @@ export function CareerAspirationField({
               </option>
             ))}
         </select>
+        {validationErrorAt(errors, 'careerAspiration.secondaryCapability') && (
+          <p className="mt-2 text-xs font-semibold text-error-700">
+            {validationErrorAt(
+              errors,
+              'careerAspiration.secondaryCapability',
+            )}
+          </p>
+        )}
       </label>
 
       <label className="block">
@@ -1362,6 +1567,11 @@ export function CareerAspirationField({
           }
           placeholder="Add context that is not captured by the structured targets."
         />
+        {validationErrorAt(errors, 'careerAspiration.notes') && (
+          <p className="mt-2 text-xs font-semibold text-error-700">
+            {validationErrorAt(errors, 'careerAspiration.notes')}
+          </p>
+        )}
       </label>
     </div>
   );
@@ -1373,6 +1583,7 @@ function Area(p: {
   onChange: (x: string) => void;
   placeholder: string;
   rows?: number;
+  error?: string;
 }) {
   return (
     <label className="block">
@@ -1382,10 +1593,15 @@ function Area(p: {
       <textarea
         rows={p.rows || 7}
         className="input resize-y"
+        aria-label={p.label.replace(/ \*$/, '')}
+        aria-invalid={Boolean(p.error)}
         value={p.value || ''}
         onChange={(e) => p.onChange(e.target.value)}
         placeholder={p.placeholder}
       />
+      {p.error && (
+        <p className="mt-2 text-xs font-semibold text-error-700">{p.error}</p>
+      )}
     </label>
   );
 }

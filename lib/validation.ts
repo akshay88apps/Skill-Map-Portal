@@ -29,8 +29,8 @@ const aspirationSkillsInput = z
       targetProficiency: z.number().int().min(1).max(5),
     }),
   )
-  .min(1)
-  .max(50)
+  .min(1, 'Add at least one target skill.')
+  .max(50, 'Select no more than 50 target skills.')
   .refine(
     (skills) => new Set(skills.map((skill) => skill.name)).size === skills.length,
     'Target skills must be unique',
@@ -38,11 +38,19 @@ const aspirationSkillsInput = z
 export const careerAspirationInput = z
   .object({
     targetCapability: optionalDepartmentSelection,
-    targetRole: z.string().trim().min(1).max(60),
+    targetRole: z
+      .string()
+      .trim()
+      .min(1, 'Enter a target role or next milestone.')
+      .max(60, 'Target role must be 60 characters or fewer.'),
     targetSkills: aspirationSkillsInput,
     targetTimeframe: careerTimeframeSelection,
     secondaryCapability: optionalDepartmentSelection,
-    notes: z.string().trim().max(300).optional(),
+    notes: z
+      .string()
+      .trim()
+      .max(300, 'Notes must be 300 characters or fewer.')
+      .optional(),
   })
   .refine(
     (aspiration) =>
@@ -78,14 +86,29 @@ export const projectInput = z.object({
   confidence: z.number().min(0).max(1).optional().nullable(),
 });
 const profileProjectInput = z.object({
-  name: z.string().trim().min(1).max(200),
-  description: z.string().trim().min(1).max(10000),
-  techStack: z.array(taxonomySelection).min(1).max(100),
+  name: z
+    .string()
+    .trim()
+    .min(1, 'Enter a project name.')
+    .max(200, 'Project name must be 200 characters or fewer.'),
+  description: z
+    .string()
+    .trim()
+    .min(1, 'Enter a project description.')
+    .max(10000, 'Project description is too long.'),
+  techStack: z
+    .array(taxonomySelection)
+    .min(1, 'Add at least one technology to this project.')
+    .max(100, 'Select no more than 100 technologies per project.'),
 });
 const profileCertificationInput = z.object({
   clientId: z.string().trim().min(1).max(100),
   id: z.string().trim().min(1).max(100).optional(),
-  name: z.string().trim().min(1).max(200),
+  name: z
+    .string()
+    .trim()
+    .min(1, 'Enter a certification name.')
+    .max(200, 'Certification name must be 200 characters or fewer.'),
   attachmentFileName: z.string().trim().max(255).optional(),
   attachmentContentType: z.string().trim().max(100).optional(),
   attachmentSize: z.number().int().nonnegative().optional(),
@@ -107,7 +130,11 @@ export const selfRatingInput = z.object({
     .max(100),
 });
 export const profileInput = z.object({
-  fullName: z.string().min(2).max(120),
+  fullName: z
+    .string()
+    .trim()
+    .min(2, 'Enter a full name using at least 2 characters.')
+    .max(120, 'Full name must be 120 characters or fewer.'),
   preferredName: z.string().max(80).optional(),
   department: optionalDepartmentSelection,
   jobTitle: z.string().max(100).optional(),

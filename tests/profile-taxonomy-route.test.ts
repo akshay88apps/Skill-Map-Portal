@@ -76,6 +76,44 @@ beforeEach(() => {
 });
 
 describe('profile taxonomy submission', () => {
+  it('returns an actionable nested path for an invalid project technology list', async () => {
+    const request = new NextRequest('http://localhost/api/profile', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        fullName: 'Test Leader',
+        experience: '10 years 0 months',
+        ratedSkills: [],
+        projects: [
+          {
+            name: 'Project without technology',
+            description: 'A deliberately incomplete project.',
+            techStack: [],
+          },
+        ],
+        certifications: [],
+        careerAspiration: validCareerAspiration,
+      }),
+    });
+
+    const response = await POST(request);
+    const body = await response.json();
+
+    expect(response.status).toBe(422);
+    expect(body).toMatchObject({
+      error: 'Profile validation failed',
+      code: 'PROFILE_VALIDATION_FAILED',
+      issues: [
+        {
+          path: 'projects.0.techStack',
+          message: 'Add at least one technology to this project.',
+          code: 'too_small',
+        },
+      ],
+    });
+    expect(mocks.tx.leader.update).not.toHaveBeenCalled();
+  });
+
   it('sends Other skill and tool values to review without creating canonical rows', async () => {
     const request = new NextRequest('http://localhost/api/profile', {
       method: 'POST',
@@ -269,6 +307,89 @@ describe('profile taxonomy submission', () => {
     expect(
       mocks.tx.certification.create.mock.calls[0][0].data,
     ).not.toHaveProperty('imageData');
+  });
+
+  it('submits an image and PDF certificate together', async () => {
+    const image = await sharp({
+      create: {
+        width: 20,
+        height: 20,
+        channels: 3,
+        background: '#ffffff',
+      },
+    })
+      .png()
+      .toBuffer();
+    const pdf = Buffer.from('%PDF-1.7\nproduction-verification');
+    mocks.uploadCertificationFile.mockImplementation(
+      async (_leaderId, file) => `leader-1/${file.fileName}`,
+    );
+    mocks.tx.certification.create.mockImplementation(async ({ data }) => ({
+      id: `saved-${data.name}`,
+      name: data.name,
+      attachmentBlobName: data.attachmentBlobName,
+      attachmentFileName: data.attachmentFileName,
+      attachmentContentType: data.attachmentContentType,
+      attachmentSize: data.attachmentSize,
+    }));
+    const profile = JSON.stringify({
+      fullName: 'Test Leader',
+      experience: '10 years 0 months',
+      ratedSkills: [{ name: 'OpenAI', proficiency: 3 }],
+      careerAspiration: validCareerAspiration,
+      projects: [
+        {
+          name: 'Validated project',
+          description: 'Includes a governed technology.',
+          techStack: ['Azure Functions'],
+        },
+      ],
+      certifications: [
+        { clientId: 'draft-image', name: 'Image credential' },
+        { clientId: 'draft-pdf', name: 'PDF credential' },
+      ],
+    });
+    const asFile = (data: Buffer, name: string, type: string) =>
+      ({
+        name,
+        type,
+        size: data.byteLength,
+        arrayBuffer: async () =>
+          data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength),
+      }) as File;
+    const request = {
+      headers: new Headers({ 'content-type': 'multipart/form-data' }),
+      formData: async () => ({
+        get: (key: string) => (key === 'profile' ? profile : null),
+        entries: function* () {
+          yield ['profile', profile] as [string, string];
+          yield [
+            'certificationFile.draft-image',
+            asFile(image, 'credential.png', 'image/png'),
+          ] as [string, File];
+          yield [
+            'certificationFile.draft-pdf',
+            asFile(pdf, 'credential.pdf', 'application/pdf'),
+          ] as [string, File];
+        },
+      }),
+    } as unknown as NextRequest;
+
+    const response = await POST(request);
+
+    expect(response.status).toBe(200);
+    expect(mocks.uploadCertificationFile).toHaveBeenCalledTimes(2);
+    expect(mocks.uploadCertificationFile).toHaveBeenCalledWith(
+      'leader-1',
+      expect.objectContaining({ contentType: 'image/webp' }),
+    );
+    expect(mocks.uploadCertificationFile).toHaveBeenCalledWith(
+      'leader-1',
+      expect.objectContaining({
+        contentType: 'application/pdf',
+        fileName: 'credential.pdf',
+      }),
+    );
   });
 
   it('stores career aspiration targets in the leader-skill join table', async () => {
