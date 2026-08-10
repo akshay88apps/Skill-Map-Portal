@@ -1,6 +1,10 @@
-import { PageHeader, Stat } from '@/components/ui';
+import { Badge, Empty, PageHeader, PanelHeader, Stat } from '@/components/ui';
 import { db } from '@/lib/db';
 import { requireAdmin } from '@/lib/authz';
+import {
+  buildCapabilityMatrix,
+  categoriesForCapability,
+} from '@/lib/capabilities';
 export const dynamic = 'force-dynamic';
 export default async function Analytics() {
   await requireAdmin();
@@ -11,6 +15,7 @@ export default async function Analytics() {
     }),
     db.certification.findMany({
       where: { leader: { profileStatus: 'PUBLISHED' } },
+      select: { id: true },
     }),
     db.$queryRaw<
       Array<{ count: bigint }>
@@ -36,6 +41,7 @@ export default async function Analytics() {
     .sort((a, b) => b[1].count - a[1].count)
     .slice(0, 6);
   const stale = Number(staleRows[0]?.count || 0);
+  const capabilityMatrix = buildCapabilityMatrix(leaders);
   return (
     <>
       <PageHeader
@@ -43,7 +49,7 @@ export default async function Analytics() {
         title="Capability analytics"
         description="Live, published profile coverage. Inferred ratings are shown separately and are not treated as confirmed evidence."
       />
-      <div className="space-y-6 p-6 lg:p-10">
+      <div className="page-shell space-y-6">
         <div className="grid gap-4 md:grid-cols-4">
           <Stat
             label="Published leaders"
@@ -66,8 +72,74 @@ export default async function Analytics() {
             detail="Not updated in 2 quarters"
           />
         </div>
+        <section className="card overflow-hidden">
+          <PanelHeader
+            eyebrow="Executive rollup"
+            title="Capability Matrix"
+            description="Leaders count once in every capability their published skills or approved manual tags support; totals are coverage, not allocated headcount."
+          />
+          <div className="overflow-x-auto">
+            <table className="data-table min-w-[760px]">
+              <thead>
+                <tr>
+                  <th>Capability</th>
+                  <th>Source</th>
+                  <th>Mapped skill categories</th>
+                  <th className="text-right">Headcount</th>
+                  <th className="w-56">Coverage</th>
+                </tr>
+              </thead>
+              <tbody>
+                {capabilityMatrix.map((row) => {
+                  const percent = leaders.length
+                    ? Math.round((row.headcount / leaders.length) * 100)
+                    : 0;
+                  const categories = categoriesForCapability(row.name);
+                  return (
+                    <tr key={row.name}>
+                      <td className="font-semibold text-neutral-900">
+                        {row.name}
+                      </td>
+                      <td>
+                        <Badge tone={row.kind === 'manual' ? 'info' : 'neutral'}>
+                          {row.kind === 'manual'
+                            ? 'Manually tagged'
+                            : 'Skill-derived'}
+                        </Badge>
+                      </td>
+                      <td className="text-neutral-600">
+                        {categories.length ? categories.join(' · ') : '—'}
+                      </td>
+                      <td className="text-right text-base font-semibold">
+                        {row.headcount}
+                      </td>
+                      <td>
+                        <div className="flex items-center gap-3">
+                          <div className="progress-track flex-1">
+                            <div
+                              className="progress-value"
+                              style={{ width: `${percent}%` }}
+                            />
+                          </div>
+                          <span className="w-10 text-right text-xs text-neutral-600">
+                            {percent}%
+                          </span>
+                        </div>
+                        {row.name === 'Digital Trust' && row.headcount === 0 && (
+                          <p className="mt-1 text-xs font-medium text-warning-700">
+                            Security &amp; Cybersecurity currently has no leaders
+                          </p>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
         <section className="card p-7">
-          <h2 className="text-xl font-bold">Organisation skill coverage</h2>
+          <h2 className="text-xl font-semibold">Organisation skill coverage</h2>
           <div className="mt-6 space-y-5">
             {coverage.map(([skill, v]) => (
               <div key={skill}>
@@ -89,13 +161,17 @@ export default async function Analytics() {
               </div>
             ))}
             {!coverage.length && (
-              <p className="text-sm text-ink/45">
-                Publish leader profiles to populate analytics.
-              </p>
+              <Empty
+                compact
+                title="No published skill coverage yet"
+                body="Publish leader profiles with taxonomy skills to populate this analysis."
+                href="/admin"
+                label="Open leader administration"
+              />
             )}
           </div>
         </section>
-        <p className="text-xs text-ink/40">
+        <p className="text-xs text-neutral-600">
           {certs.length} certifications recorded across published profiles.
         </p>
       </div>

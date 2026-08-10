@@ -49,35 +49,42 @@ enum ProjectStatus {
   UNKNOWN
 }
 
+enum ManualCapabilityTag {
+  CUSTOMER_ENGINEERING
+  INNOVATION_LAB
+  PRODUCT_STRATEGY_VENTURE_STUDIO
+}
+
 model Leader {
-  id                      String          @id @default(cuid())
-  fullName                String
-  preferredName           String?
-  email                   String          @unique
-  department              String?
-  jobTitle                String?
-  role                    Role            @default(LEADER)
-  entraObjectId           String?         @unique
-  profileStatus           ProfileStatus   @default(INVITED)
-  invitedAt               DateTime?
-  submittedAt             DateTime?
-  publishedAt             DateTime?
-  draftData               Json?
-  experienceRaw           String?
-  experienceYearsEstimate Float?
-  leadershipBracketRaw    String?
-  leadershipYearsEstimate Float?
-  careerJourneyRaw        String?
-  profileCompleted        Boolean         @default(false)
-  lastProfileUpdate       DateTime?
-  createdAt               DateTime        @default(now())
-  updatedAt               DateTime        @updatedAt
-  skills                  LeaderSkill[]
-  tools                   LeaderTool[]
-  projects                Project[]
-  certifications          Certification[]
-  snapshots               KpiSnapshot[]
-  audits                  AuditLog[]
+  id                       String                @id @default(cuid())
+  fullName                 String
+  preferredName            String?
+  email                    String                @unique
+  department               String?
+  jobTitle                 String?
+  role                     Role                  @default(LEADER)
+  additionalCapabilityTags ManualCapabilityTag[] @default([])
+  entraObjectId            String?               @unique
+  profileStatus            ProfileStatus         @default(INVITED)
+  invitedAt                DateTime?
+  submittedAt              DateTime?
+  publishedAt              DateTime?
+  draftData                Json?
+  experienceRaw            String?
+  experienceYearsEstimate  Float?
+  leadershipBracketRaw     String?
+  leadershipYearsEstimate  Float?
+  careerJourneyRaw         String?
+  profileCompleted         Boolean               @default(false)
+  lastProfileUpdate        DateTime?
+  createdAt                DateTime              @default(now())
+  updatedAt                DateTime              @updatedAt
+  skills                   LeaderSkill[]
+  tools                    LeaderTool[]
+  projects                 Project[]
+  certifications           Certification[]
+  snapshots                KpiSnapshot[]
+  audits                   AuditLog[]
 }
 
 model Invitation {
@@ -143,6 +150,8 @@ model Project {
   id                     String        @id @default(cuid())
   leaderId               String
   name                   String
+  description            String?
+  techStack              String[]      @default([])
   client                 String?
   role                   String?
   durationText           String?
@@ -154,14 +163,18 @@ model Project {
 }
 
 model Certification {
-  id        String    @id @default(cuid())
-  leaderId  String
-  name      String
-  issuer    String?
-  issuedAt  DateTime?
-  expiresAt DateTime?
-  rawText   String?
-  leader    Leader    @relation(fields: [leaderId], references: [id], onDelete: Cascade)
+  id            String    @id @default(cuid())
+  leaderId      String
+  name          String
+  issuer        String?
+  issuedAt      DateTime?
+  expiresAt     DateTime?
+  rawText       String?
+  attachmentBlobName    String?   @unique
+  attachmentContentType String?
+  attachmentFileName    String?
+  attachmentSize        Int?
+  leader        Leader    @relation(fields: [leaderId], references: [id], onDelete: Cascade)
 }
 
 model Tool {

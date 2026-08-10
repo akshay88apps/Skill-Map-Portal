@@ -1,6 +1,9 @@
 import { db } from '../lib/db';
 import { demoLeaders } from '../lib/demo';
+import { seedTaxonomy } from '../lib/taxonomy-seed';
+import { resolveTaxonomyTerm } from '../lib/taxonomy';
 async function seed() {
+  await seedTaxonomy(db);
   for (const d of demoLeaders) {
     const leader = await db.leader.upsert({
       where: { email: d.email },
@@ -18,10 +21,10 @@ async function seed() {
       },
     });
     for (const [name, proficiency] of d.skills) {
-      const skill = await db.skill.upsert({
-        where: { name },
-        update: {},
-        create: { name },
+      const taxonomyMatch = resolveTaxonomyTerm(name);
+      if (!taxonomyMatch) continue;
+      const skill = await db.skill.findUniqueOrThrow({
+        where: { name: taxonomyMatch.name },
       });
       await db.leaderSkill.upsert({
         where: {

@@ -1,7 +1,16 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { PageHeader, Stat } from '@/components/ui';
+import { CapabilityTagMultiSelect } from '@/components/capability-tag-multiselect';
+import {
+  Button,
+  Empty,
+  PageHeader,
+  PanelHeader,
+  RoleBadge,
+  Stat,
+  StatusBadge,
+} from '@/components/ui';
 type Leader = {
   id: string;
   fullName: string;
@@ -10,6 +19,7 @@ type Leader = {
   role: 'ADMIN' | 'LEADER' | 'VIEWER';
   profileStatus: string;
   skills: unknown[];
+  additionalCapabilityTags: string[];
   updatedAt: string;
 };
 export default function Admin() {
@@ -53,11 +63,14 @@ export default function Admin() {
       load();
     }
   };
-  const update = async (id: string, profileStatus: string) => {
+  const update = async (
+    id: string,
+    change: { profileStatus?: string; additionalCapabilityTags?: string[] },
+  ) => {
     await fetch(`/api/admin/leaders/${id}`, {
       method: 'PATCH',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ profileStatus }),
+      body: JSON.stringify(change),
     });
     load();
   };
@@ -73,7 +86,7 @@ export default function Admin() {
           </Link>
         }
       />
-      <div className="space-y-7 p-6 lg:p-10">
+      <div className="page-shell space-y-6">
         <div className="grid gap-4 md:grid-cols-4">
           <Stat label="Invited" value={counts.invited} detail="Not started" />
           <Stat
@@ -92,84 +105,116 @@ export default function Admin() {
             detail="Visible in directory"
           />
         </div>
-        <section className="card p-6">
-          <h2 className="text-lg font-bold">Invite leaders</h2>
-          <p className="mt-1 text-sm text-ink/50">
-            Enter work emails separated by commas. Each leader signs in with
-            Microsoft SSO.
-          </p>
-          <div className="mt-4 flex flex-col gap-3 md:flex-row">
-            <textarea
-              className="input min-h-24 flex-1"
-              value={emails}
-              onChange={(e) => setEmails(e.target.value)}
-              placeholder="leader1@company.com, leader2@company.com"
-            />
-            <button
-              className="btn md:self-end"
-              onClick={invite}
-              disabled={!emails.trim()}
-            >
-              Queue invitations
-            </button>
+        <section className="card overflow-hidden">
+          <PanelHeader
+            title="Invite leaders"
+            description="Enter work emails separated by commas. Each leader signs in with Microsoft SSO."
+          />
+          <div className="p-6">
+            <div className="flex flex-col gap-3 md:flex-row">
+              <textarea
+                aria-label="Leader email addresses"
+                className="input min-h-24 flex-1"
+                value={emails}
+                onChange={(e) => setEmails(e.target.value)}
+                placeholder="leader1@company.com, leader2@company.com"
+              />
+              <Button
+                className="md:self-end"
+                onClick={invite}
+                disabled={!emails.trim()}
+              >
+                Queue invitations
+              </Button>
+            </div>
+            {message && (
+              <p
+                role="status"
+                className="mt-4 rounded-control border border-info-700/20 bg-info-50 p-3 text-sm font-semibold text-info-700"
+              >
+                {message}
+              </p>
+            )}
           </div>
-          {message && (
-            <p role="status" className="mt-3 text-sm font-semibold text-moss">
-              {message}
-            </p>
-          )}
         </section>
         <section className="card overflow-x-auto">
-          <table className="w-full min-w-[850px] text-sm">
+          <table className="data-table min-w-[1100px]">
             <thead>
-              <tr className="border-b border-forest/10 text-left">
+              <tr>
                 <th className="p-4">Leader</th>
                 <th>Department</th>
                 <th>Role</th>
                 <th>Status</th>
                 <th>Skills</th>
+                <th className="min-w-64">Additional capability tags</th>
                 <th>Action</th>
               </tr>
             </thead>
             <tbody>
               {leaders.map((l) => (
-                <tr key={l.id} className="border-b border-forest/10">
+                <tr key={l.id}>
                   <td className="p-4">
                     <b>{l.fullName}</b>
                     <br />
-                    <span className="text-xs text-ink/45">{l.email}</span>
+                    <span className="text-xs text-neutral-500">{l.email}</span>
                   </td>
                   <td>{l.department || '—'}</td>
-                  <td>{l.role.toLowerCase()}</td>
                   <td>
-                    <span className="pill bg-mint text-forest">
-                      {l.profileStatus.toLowerCase()}
-                    </span>
+                    <RoleBadge role={l.role} />
+                  </td>
+                  <td>
+                    <StatusBadge status={l.profileStatus} />
                   </td>
                   <td>{l.skills.length}</td>
+                  <td className="py-3 pr-4 align-top">
+                    <CapabilityTagMultiSelect
+                      value={l.additionalCapabilityTags || []}
+                      onChange={(additionalCapabilityTags) => {
+                        setLeaders((current) =>
+                          current.map((leader) =>
+                            leader.id === l.id
+                              ? { ...leader, additionalCapabilityTags }
+                              : leader,
+                          ),
+                        );
+                        void update(l.id, { additionalCapabilityTags });
+                      }}
+                    />
+                    <p className="mt-2 text-xs text-neutral-500">
+                      Manually tagged · admin only
+                    </p>
+                  </td>
                   <td>
                     {l.profileStatus === 'SUBMITTED' ? (
                       <div className="flex gap-2">
-                        <button
-                          className="btn px-3 py-2"
-                          onClick={() => update(l.id, 'PUBLISHED')}
+                        <Button
+                          className="px-3 py-2"
+                          onClick={() =>
+                            update(l.id, { profileStatus: 'PUBLISHED' })
+                          }
                         >
                           Publish
-                        </button>
-                        <button
-                          className="btn-ghost px-3 py-2"
-                          onClick={() => update(l.id, 'RETURNED')}
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          className="px-3 py-2"
+                          onClick={() =>
+                            update(l.id, { profileStatus: 'RETURNED' })
+                          }
                         >
                           Return
-                        </button>
+                        </Button>
                       </div>
                     ) : l.profileStatus === 'PUBLISHED' ? (
-                      <button
-                        className="btn-ghost px-3 py-2"
-                        onClick={() => update(l.id, 'DEACTIVATED')}
+                      <Button
+                        variant="destructive"
+                        className="px-3 py-2"
+                        onClick={() =>
+                          update(l.id, { profileStatus: 'DEACTIVATED' })
+                        }
                       >
                         Deactivate
-                      </button>
+                      </Button>
                     ) : null}
                   </td>
                 </tr>
@@ -177,9 +222,13 @@ export default function Admin() {
             </tbody>
           </table>
           {!leaders.length && (
-            <p className="p-8 text-center text-sm text-ink/45">
-              No leader records are available yet.
-            </p>
+            <div className="p-5">
+              <Empty
+                compact
+                title="No leader records"
+                body="Invite leaders to begin onboarding and capability tagging."
+              />
+            </div>
           )}
         </section>
       </div>

@@ -1,13 +1,14 @@
 import { signIn } from '@/auth';
+import { Button } from '@/components/ui';
 export default function SignIn() {
   return (
-    <main className="grid min-h-screen place-items-center bg-forest p-6">
+    <main className="grid min-h-screen place-items-center bg-primary-900 p-6">
       <section className="card w-full max-w-md p-8 text-center">
-        <p className="text-xs font-bold uppercase tracking-[.2em] text-moss">
-          Tech Leaders Portal
-        </p>
-        <h1 className="mt-3 text-3xl font-black">Sign in to Skillmap</h1>
-        <p className="mt-3 text-sm text-ink/55">
+        <p className="eyebrow">Tech Leaders Portal</p>
+        <h1 className="mt-2 text-3xl font-semibold tracking-tight">
+          Sign in to Skillmap
+        </h1>
+        <p className="mt-2 text-sm text-neutral-600">
           Use your organisation Microsoft account. Access is restricted to
           approved leaders and HR administrators.
         </p>
@@ -17,9 +18,9 @@ export default function SignIn() {
             await signIn('microsoft-entra-id', { redirectTo: '/' });
           }}
         >
-          <button className="btn mt-7 w-full" type="submit">
+          <Button className="mt-8 w-full" type="submit">
             Continue with Microsoft
-          </button>
+          </Button>
         </form>
       </section>
     </main>

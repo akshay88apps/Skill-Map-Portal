@@ -8,9 +8,10 @@ import {
 } from '../lib/normalization';
 import {
   extractWithAI,
-  partitionByConfidence,
   safeInferredProficiency,
 } from '../lib/ingestion/service';
+import { resolveCanonicalSkill } from '../lib/skill-resolution';
+import { seedTaxonomy } from '../lib/taxonomy-seed';
 const file = process.argv[2] || 'Tech_Leaders_Skill_Gathering.xlsx';
 async function readRows() {
   const workbook = new ExcelJS.Workbook();
@@ -33,6 +34,7 @@ async function readRows() {
 const pick = (r: Record<string, string>, ...names: string[]) =>
   names.map((n) => r[n]).find(Boolean) || '';
 async function run() {
+  await seedTaxonomy(db);
   const rows = await readRows();
   for (const row of rows) {
     const fullName = pick(row, 'Full Name', 'Full name');
@@ -83,15 +85,38 @@ async function run() {
       ),
       tools: pick(row, 'Tools you know'),
     });
-    const { accepted, needsReview } = partitionByConfidence(extracted);
-    for (const x of accepted.filter((x) => x.type === 'skill')) {
-      const name = String(x.payload.canonicalName);
+    const needsReview = [] as typeof extracted;
+    for (const x of extracted.filter((record) => record.type === 'skill')) {
+      const rawText = String(
+        x.payload.rawText || x.payload.canonicalName || x.payload.name || '',
+      );
+      const resolution = await resolveCanonicalSkill(rawText, db);
+      if (!resolution || x.confidence < 0.7) {
+        needsReview.push({
+          ...x,
+          payload: {
+            ...x.payload,
+            ...(resolution
+              ? {
+                  canonicalName: resolution.name,
+                  taxonomyMatch: resolution.matchType,
+                }
+              : {}),
+            needsReview: true,
+          },
+        });
+        continue;
+      }
       const proficiency = safeInferredProficiency(x.payload);
-      const skill = await db.skill.upsert({
-        where: { name },
-        update: {},
-        create: { name },
+      const skill = await db.skill.findUniqueOrThrow({
+        where: { name: resolution.name },
       });
+      if (rawText.trim() && rawText.trim() !== resolution.name)
+        await db.skillAlias.upsert({
+          where: { rawText: rawText.trim() },
+          update: { skillId: skill.id },
+          create: { rawText: rawText.trim(), skillId: skill.id },
+        });
       await db.leaderSkill.upsert({
         where: {
           leaderId_skillId_source: {
@@ -115,6 +140,43 @@ async function run() {
         },
       });
     }
+    for (const x of extracted.filter((record) => record.type === 'tool')) {
+      const rawText = String(x.payload.rawText || x.payload.name || '');
+      const resolution = await resolveCanonicalSkill(rawText, db);
+      if (!resolution || x.confidence < 0.7) {
+        needsReview.push({
+          ...x,
+          payload: {
+            ...x.payload,
+            ...(resolution
+              ? {
+                  canonicalName: resolution.name,
+                  taxonomyMatch: resolution.matchType,
+                }
+              : {}),
+            needsReview: true,
+          },
+        });
+        continue;
+      }
+      const tool = await db.tool.upsert({
+        where: { name: resolution.name },
+        update: {},
+        create: { name: resolution.name },
+      });
+      await db.leaderTool.upsert({
+        where: {
+          leaderId_toolId: { leaderId: leader.id, toolId: tool.id },
+        },
+        update: {},
+        create: { leaderId: leader.id, toolId: tool.id },
+      });
+    }
+    needsReview.push(
+      ...extracted.filter(
+        (record) => record.type === 'project' && record.confidence < 0.7,
+      ),
+    );
     for (const x of needsReview)
       await db.reviewItem.create({
         data: {

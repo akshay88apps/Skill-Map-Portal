@@ -1,25 +1,40 @@
 'use client';
 import { useState } from 'react';
 import { Download } from 'lucide-react';
-import { PageHeader } from '@/components/ui';
+import { Button, Empty, PageHeader } from '@/components/ui';
 import { useLiveLeaders } from '@/lib/use-live-leaders';
+import {
+  capabilityNames,
+  capabilitiesForLeader,
+} from '@/lib/capabilities';
 const color: Record<number, string> = {
-  5: 'bg-forest text-white',
-  4: 'bg-[#2f6653] text-white',
-  3: 'bg-moss text-white',
-  2: 'bg-[#a8cfbb] text-forest',
-  1: 'bg-mint text-forest',
+  5: 'bg-primary-900 text-neutral-50',
+  4: 'bg-primary-800 text-neutral-50',
+  3: 'bg-primary-700 text-neutral-50',
+  2: 'bg-primary-300 text-primary-900',
+  1: 'bg-primary-100 text-primary-900',
 };
 const labels = ['', 'Novice', 'Familiar', 'Proficient', 'Advanced', 'Expert'];
 export default function Matrix() {
-  const { leaders: demoLeaders } = useLiveLeaders();
-  const allSkills = [
-    ...new Set(demoLeaders.flatMap((l) => l.skills.map((s) => s[0]))),
-  ];
+  const { leaders: allLeaders } = useLiveLeaders();
   const [dept, setDept] = useState('All');
-  const leaders = demoLeaders.filter(
-    (l) => dept === 'All' || l.department === dept,
-  );
+  const [capability, setCapability] = useState('All');
+  const leaders = allLeaders.filter((leader) => {
+    const leaderCapabilities = capabilitiesForLeader({
+      id: leader.id,
+      skills: leader.skills.map((skill) => ({
+        skill: { category: skill[3] },
+      })),
+      additionalCapabilityTags: leader.additionalCapabilityTags,
+    });
+    return (
+      (dept === 'All' || leader.department === dept) &&
+      (capability === 'All' || leaderCapabilities.includes(capability))
+    );
+  });
+  const allSkills = [
+    ...new Set(leaders.flatMap((leader) => leader.skills.map((skill) => skill[0]))),
+  ];
   const csv = () => {
     const body = [
       ['Leader', ...allSkills],
@@ -45,23 +60,37 @@ export default function Matrix() {
         title="Skill matrix"
         description="Ratings use a 1–5 scale. Dashed cells and the ◇ marker identify inferred values that require confirmation before gap decisions."
         action={
-          <button onClick={csv} className="btn">
+          <Button onClick={csv}>
             <Download size={16} className="mr-2" /> Export CSV
-          </button>
+          </Button>
         }
       />
-      <div className="p-6 lg:p-10">
+      <div className="page-shell">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-          <select
-            className="input max-w-xs"
-            value={dept}
-            onChange={(e) => setDept(e.target.value)}
-          >
-            <option>All</option>
-            {[...new Set(demoLeaders.map((l) => l.department))].map((x) => (
-              <option key={x}>{x}</option>
-            ))}
-          </select>
+          <div className="grid w-full gap-3 sm:max-w-2xl sm:grid-cols-2">
+            <select
+              aria-label="Department"
+              className="input max-w-xs"
+              value={dept}
+              onChange={(e) => setDept(e.target.value)}
+            >
+              <option>All</option>
+              {[...new Set(allLeaders.map((l) => l.department))].map((x) => (
+                <option key={x}>{x}</option>
+              ))}
+            </select>
+            <select
+              aria-label="Capability"
+              className="input min-w-56"
+              value={capability}
+              onChange={(event) => setCapability(event.target.value)}
+            >
+              <option>All</option>
+              {capabilityNames.map((name) => (
+                <option key={name}>{name}</option>
+              ))}
+            </select>
+          </div>
           <div className="flex gap-3 text-xs">
             <span>● self-rated</span>
             <span>◇ inferred</span>
@@ -69,15 +98,15 @@ export default function Matrix() {
           </div>
         </div>
         <div className="card overflow-x-auto">
-          <table className="w-full min-w-[950px] border-collapse text-sm">
+          <table className="data-table min-w-[950px]">
             <thead>
               <tr>
-                <th className="sticky left-0 z-10 bg-white p-4 text-left">
+                <th className="sticky left-0 z-10 bg-neutral-50">
                   Leader
                 </th>
                 {allSkills.map((s) => (
                   <th
-                    className="min-w-32 border-l border-forest/5 p-3 text-xs"
+                    className="min-w-32 border-l border-neutral-200 text-xs"
                     key={s}
                   >
                     {s}
@@ -87,10 +116,10 @@ export default function Matrix() {
             </thead>
             <tbody>
               {leaders.map((l) => (
-                <tr className="border-t border-forest/10" key={l.id}>
-                  <th className="sticky left-0 bg-white p-4 text-left">
+                <tr key={l.id}>
+                  <th className="sticky left-0 bg-neutral-50 p-4 text-left">
                     <div>{l.fullName}</div>
-                    <span className="text-xs font-normal text-ink/40">
+                    <span className="text-xs font-normal text-neutral-600">
                       {l.department}
                     </span>
                   </th>
@@ -99,10 +128,10 @@ export default function Matrix() {
                     if (!rating)
                       return (
                         <td
-                          className="border-l border-forest/5 p-3 text-center"
+                          className="border-l border-neutral-200 p-3 text-center"
                           key={s}
                         >
-                          <span className="text-ink/15">—</span>
+                          <span className="text-neutral-500">—</span>
                         </td>
                       );
                     const [, p, source] = rating;
@@ -114,12 +143,12 @@ export default function Matrix() {
                           : '◆';
                     return (
                       <td
-                        className="border-l border-forest/5 p-3 text-center"
+                        className="border-l border-neutral-200 p-3 text-center"
                         key={s}
                       >
                         <span
                           title={`${p} — ${labels[p]} · ${source.replace('_', ' ')}`}
-                          className={`relative mx-auto block h-9 w-9 rounded-lg ${color[p]} ${source === 'inferred' ? 'border-2 border-dashed border-gold' : ''} leading-9`}
+                          className={`relative mx-auto block h-9 w-9 rounded-control ${color[p]} ${source === 'inferred' ? 'border-2 border-dashed border-gold' : ''} leading-9`}
                         >
                           {p}
                           <sup className="absolute -right-1 -top-2 text-[9px] text-gold">
@@ -133,6 +162,15 @@ export default function Matrix() {
               ))}
             </tbody>
           </table>
+          {!leaders.length && (
+            <div className="p-4">
+              <Empty
+                compact
+                title="No matching capability records"
+                body="Adjust the department or capability filter to populate the matrix."
+              />
+            </div>
+          )}
         </div>
       </div>
     </>

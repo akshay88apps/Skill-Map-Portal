@@ -11,7 +11,7 @@ export async function GET() {
     include: {
       skills: { include: { skill: true } },
       projects: true,
-      certifications: true,
+      certifications: { select: { id: true, name: true } },
     },
     orderBy: { fullName: 'asc' },
   });

@@ -27,11 +27,11 @@ describe('ingestion', () => {
       secondary: 'MS Dynamics CRM, Power BI',
     }).filter((x) => x.type === 'skill');
     const dynamics = skills.find(
-      (x) => x.payload.canonicalName === 'Microsoft Dynamics 365',
+      (x) => x.payload.canonicalName === 'Microsoft Dynamics 365 CRM',
     );
     expect(
       skills.filter(
-        (x) => x.payload.canonicalName === 'Microsoft Dynamics 365',
+        (x) => x.payload.canonicalName === 'Microsoft Dynamics 365 CRM',
       ),
     ).toHaveLength(1);
     expect(dynamics?.payload).toMatchObject({
@@ -42,6 +42,23 @@ describe('ingestion', () => {
     expect(
       skills.find((x) => x.payload.canonicalName === 'Power BI')?.payload,
     ).toMatchObject({ proficiency: 2, ratingSource: 'inferred' });
+  });
+  it('uses the HR taxonomy first and sends unresolved terms to review', () => {
+    const records = deterministicExtract({
+      primary: 'Kubernets, Entirely New Framework',
+    }).filter((record) => record.type === 'skill');
+    expect(records.find((record) => record.payload.rawText === 'Kubernets'))
+      .toMatchObject({
+        payload: {
+          canonicalName: 'Kubernetes',
+          taxonomyMatch: 'fuzzy',
+        },
+      });
+    expect(
+      records.find(
+        (record) => record.payload.rawText === 'Entirely New Framework',
+      ),
+    ).toMatchObject({ confidence: 0.55 });
   });
   it('constrains provider-inferred values to the 1-5 scale', () => {
     expect(safeInferredProficiency({ tag: 'primary', proficiency: 99 })).toBe(

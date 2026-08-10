@@ -27,37 +27,83 @@ export async function PATCH(
         { status: 422 },
       );
     if (item.entityType === 'skill') {
-      const name = String(payload.canonicalName || payload.name || '');
+      const name = String(
+        payload.canonicalName ||
+          payload.requestedName ||
+          payload.name ||
+          payload.rawText ||
+          '',
+      ).trim();
+      if (!name)
+        return NextResponse.json(
+          { error: 'Review payload has no skill name' },
+          { status: 422 },
+        );
       const proficiency = Math.min(
         5,
         Math.max(1, Number(payload.proficiency) || 3),
       );
       const skill = await db.skill.upsert({
         where: { name },
-        update: {},
-        create: { name },
+        update: { needsReview: false },
+        create: {
+          name,
+          category: payload.category ? String(payload.category) : null,
+          needsReview: false,
+        },
       });
+      const rawText = String(payload.rawText || '').trim();
+      if (rawText)
+        await db.skillAlias.upsert({
+          where: { rawText },
+          update: { skillId: skill.id },
+          create: { rawText, skillId: skill.id },
+        });
+      const userRequested = payload.source === 'user_other';
       await db.leaderSkill.upsert({
         where: {
           leaderId_skillId_source: {
             leaderId,
             skillId: skill.id,
-            source: 'AI_EXTRACTED',
+            source: userRequested ? 'SELF_REPORTED' : 'AI_EXTRACTED',
           },
         },
         update: {
           proficiency,
-          ratingSource: 'inferred',
-          confidence: item.confidence,
+          ratingSource: userRequested ? 'self_rated' : 'inferred',
+          confidence: userRequested ? null : item.confidence,
         },
         create: {
           leaderId,
           skillId: skill.id,
-          source: 'AI_EXTRACTED',
+          source: userRequested ? 'SELF_REPORTED' : 'AI_EXTRACTED',
           proficiency,
-          ratingSource: 'inferred',
-          confidence: item.confidence,
+          ratingSource: userRequested ? 'self_rated' : 'inferred',
+          confidence: userRequested ? null : item.confidence,
         },
+      });
+    } else if (item.entityType === 'tool') {
+      const name = String(
+        payload.canonicalName ||
+          payload.requestedName ||
+          payload.name ||
+          payload.rawText ||
+          '',
+      ).trim();
+      if (!name)
+        return NextResponse.json(
+          { error: 'Review payload has no tool name' },
+          { status: 422 },
+        );
+      const tool = await db.tool.upsert({
+        where: { name },
+        update: {},
+        create: { name },
+      });
+      await db.leaderTool.upsert({
+        where: { leaderId_toolId: { leaderId, toolId: tool.id } },
+        update: {},
+        create: { leaderId, toolId: tool.id },
       });
     } else if (item.entityType === 'project') {
       await db.project.create({

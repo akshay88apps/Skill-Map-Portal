@@ -10,7 +10,8 @@ export default {
       if (
         path.startsWith('/api/auth') ||
         path === '/signin' ||
-        path === '/api/health'
+        path === '/api/health' ||
+        path === '/api/notifications/run'
       )
         return true;
       if (

@@ -1,20 +1,7 @@
 import NextAuth from 'next-auth';
 import { db } from '@/lib/db';
 import authConfig from '@/auth.config';
-
-function configuredRole(groups: string[] = []) {
-  if (
-    process.env.AUTH_ADMIN_GROUP_ID &&
-    groups.includes(process.env.AUTH_ADMIN_GROUP_ID)
-  )
-    return 'ADMIN' as const;
-  if (
-    process.env.AUTH_LEADER_GROUP_ID &&
-    groups.includes(process.env.AUTH_LEADER_GROUP_ID)
-  )
-    return 'LEADER' as const;
-  return 'VIEWER' as const;
-}
+import { roleFromGroups } from '@/lib/roles';
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -27,7 +14,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const groups = Array.isArray(profile.groups)
           ? profile.groups.map(String)
           : [];
-        const configured = configuredRole(groups);
+        const configured = roleFromGroups(groups);
         const existing = email
           ? await db.leader.findUnique({ where: { email } })
           : null;
@@ -41,6 +28,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 preferredName: String(
                   profile.name || token.name || existing?.preferredName || '',
                 ),
+                role: configured,
               },
               create: {
                 email,
@@ -51,8 +39,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               },
             })
           : null;
-        token.role =
-          configured === 'ADMIN' ? 'ADMIN' : leader?.role || configured;
+        token.role = configured;
         token.leaderId = leader?.id;
         token.groups = groups;
       }

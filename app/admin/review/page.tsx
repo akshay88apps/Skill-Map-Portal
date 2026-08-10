@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { Check, X } from 'lucide-react';
-import { PageHeader, Empty } from '@/components/ui';
+import { Badge, Button, Empty, PageHeader } from '@/components/ui';
 type Review = {
   id: string;
   entityType: string;
@@ -35,11 +35,11 @@ export default function Review() {
   return (
     <>
       <PageHeader
-        eyebrow="AI governance"
+        eyebrow="Taxonomy governance"
         title="Review queue"
-        description="Human verification for extracted records below the 70% confidence threshold."
+        description="Human verification for unmatched extracted terms and leader-requested additions to the HR taxonomy."
       />
-      <div className="p-6 lg:p-10">
+      <div className="page-shell">
         {loading ? (
           <p>Loading review queue…</p>
         ) : !rows.length ? (
@@ -51,14 +51,14 @@ export default function Review() {
           <div className="card overflow-hidden">
             {rows.map((r) => (
               <div
-                className="flex flex-col gap-4 border-b border-forest/10 p-5 last:border-0 md:flex-row md:items-center"
+                className="flex flex-col gap-4 border-b border-neutral-200 p-5 last:border-0 md:flex-row md:items-center"
                 key={r.id}
               >
-                <span className="pill w-fit bg-gold/20 text-ink">
+                <Badge tone="warning">
                   {Math.round(r.confidence * 100)}% confidence
-                </span>
+                </Badge>
                 <div className="flex-1">
-                  <p className="text-xs font-bold uppercase tracking-widest text-moss">
+                  <p className="eyebrow">
                     {r.entityType}
                   </p>
                   <textarea
@@ -73,20 +73,19 @@ export default function Review() {
                   />
                 </div>
                 <div className="flex gap-2">
-                  <button
+                  <Button
+                    variant="destructive"
                     onClick={() => act(r.id, 'reject')}
-                    className="btn-ghost text-red-700"
                   >
                     <X size={16} className="mr-1" />
                     Reject
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={() => act(r.id, 'approve', r.payload)}
-                    className="btn"
                   >
                     <Check size={16} className="mr-1" />
                     Approve
-                  </button>
+                  </Button>
                 </div>
               </div>
             ))}

@@ -1,0 +1,32 @@
+{
+  "categoryToCapability": {
+    "Microsoft Technologies": "Product Engineering",
+    "Microsoft Business Applications": "Enterprise Platforms",
+    "Salesforce": "Enterprise Platforms",
+    "Artificial Intelligence & Generative AI": "AI & Autonomous Systems",
+    "Data Science & Machine Learning": "AI & Autonomous Systems",
+    "Data Engineering & Analytics": "Data Platforms & Intelligence",
+    "DevOps & Cloud Engineering": "Platform Engineering",
+    "Frontend Technologies": "Experience Engineering",
+    "Backend Technologies": "Product Engineering",
+    "Mobile Development": "Experience Engineering",
+    "CMS & E-commerce": "Experience Engineering",
+    "QA & Testing": "Product Engineering",
+    "UI/UX Design": "Experience Engineering",
+    "Security & Cybersecurity": "Digital Trust"
+  },
+  "manualCapabilities": [
+    {
+      "value": "CUSTOMER_ENGINEERING",
+      "label": "Customer Engineering"
+    },
+    {
+      "value": "INNOVATION_LAB",
+      "label": "Innovation Lab"
+    },
+    {
+      "value": "PRODUCT_STRATEGY_VENTURE_STUDIO",
+      "label": "Product Strategy & Venture Studio"
+    }
+  ]
+}

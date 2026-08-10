@@ -1,5 +1,7 @@
 # Operations runbook
 
+> Legacy AWS runbook. Azure is now the approved target; the final Azure operations runbook will replace this after the first approved deployment.
+
 ## Deploy
 
 1. Provision PostgreSQL in the approved region and store `DATABASE_URL` in the secret manager.

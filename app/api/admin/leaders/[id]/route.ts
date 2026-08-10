@@ -4,6 +4,16 @@ import { db } from '@/lib/db';
 import { requireAdmin } from '@/lib/authz';
 const input = z.object({
   role: z.enum(['ADMIN', 'LEADER', 'VIEWER']).optional(),
+  additionalCapabilityTags: z
+    .array(
+      z.enum([
+        'CUSTOMER_ENGINEERING',
+        'INNOVATION_LAB',
+        'PRODUCT_STRATEGY_VENTURE_STUDIO',
+      ]),
+    )
+    .max(3)
+    .optional(),
   profileStatus: z
     .enum([
       'INVITED',
@@ -29,7 +39,7 @@ export async function PATCH(
   const parsed = input.safeParse(await req.json());
   if (!parsed.success)
     return NextResponse.json(
-      { error: 'Invalid role or status' },
+      { error: 'Invalid leader administration update' },
       { status: 422 },
     );
   const before = await db.leader.findUnique({ where: { id: params.id } });

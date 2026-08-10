@@ -12,6 +12,11 @@ describe('legacy normalization', () => {
     ['6-10 years', 8],
     ['Less than 3 years', 3],
   ])('normalizes %s', (raw, n) => expect(normalizeExperience(raw)).toBe(n));
+
+  it('normalizes explicit years and months into fractional years', () => {
+    expect(normalizeExperience('16 years 6 months')).toBe(16.5);
+    expect(normalizeExperience('0 years 12 months')).toBe(1);
+  });
   it('deduplicates lists', () =>
     expect(splitTerms('Azure, Power BI; Azure')).toEqual([
       'Azure',
@@ -23,5 +28,5 @@ describe('legacy normalization', () => {
     expect(validCert('PL-600')).toBe(true);
   });
   it('canonicalizes known aliases', () =>
-    expect(canonical('MS Dynamics CRM')).toBe('Microsoft Dynamics 365'));
+    expect(canonical('MS Dynamics CRM')).toBe('Microsoft Dynamics 365 CRM'));
 });

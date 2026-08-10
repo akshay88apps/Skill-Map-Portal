@@ -1,0 +1,3 @@
+ALTER TABLE "Project"
+ADD COLUMN "description" TEXT,
+ADD COLUMN "techStack" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[];

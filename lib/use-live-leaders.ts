@@ -3,9 +3,7 @@ import { useEffect, useState } from 'react';
 import { demoLeaders, DemoSkill } from '@/lib/demo';
 export type LiveLeader = (typeof demoLeaders)[number];
 export function useLiveLeaders() {
-  const [leaders, setLeaders] = useState<readonly LiveLeader[]>(
-    process.env.NODE_ENV === 'development' ? demoLeaders : [],
-  );
+  const [leaders, setLeaders] = useState<readonly LiveLeader[]>([]);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
     fetch('/api/leaders?size=100')
@@ -24,17 +22,21 @@ export function useLiveLeaders() {
             leadershipBracketRaw: l.leadershipBracketRaw || '',
             skills: l.skills.map(
               (x: any) =>
-                [x.skill.name, x.proficiency, x.ratingSource] as DemoSkill,
+                [
+                  x.skill.name,
+                  x.proficiency,
+                  x.ratingSource,
+                  x.skill.category,
+                ] as DemoSkill,
             ),
+            additionalCapabilityTags: l.additionalCapabilityTags || [],
             projects: l.projects.length,
             certs: l.certifications.length,
             updatedAt: String(l.updatedAt).slice(0, 10),
           })),
         );
       })
-      .catch(() => {
-        if (process.env.NODE_ENV === 'production') setLeaders([]);
-      })
+      .catch(() => setLeaders([]))
       .finally(() => setLoading(false));
   }, []);
   return { leaders, loading };

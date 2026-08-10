@@ -1,6 +1,17 @@
 import { auth } from '@/auth';
-export type AppRole = 'ADMIN' | 'LEADER' | 'VIEWER';
+export type { AppRole } from '@/lib/roles';
 export async function currentIdentity() {
+  if (
+    process.env.AUTH_DEV_BYPASS === 'true' &&
+    process.env.NODE_ENV !== 'production'
+  )
+    return {
+      id: 'development-admin',
+      name: 'Development Admin',
+      email: 'development-admin@localhost',
+      role: 'ADMIN' as const,
+      leaderId: undefined,
+    };
   const session = await auth();
   return session?.user || null;
 }

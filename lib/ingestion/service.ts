@@ -1,4 +1,5 @@
 import { canonical, splitTerms } from '@/lib/normalization';
+import { resolveTaxonomyTerm } from '@/lib/taxonomy';
 export type Extracted = {
   type: 'project' | 'skill' | 'tool';
   payload: Record<string, unknown>;
@@ -26,7 +27,8 @@ export function deterministicExtract(input: {
     tag: 'primary' | 'secondary' | 'proficient',
   ) => {
     for (const rawText of splitTerms(value)) {
-      const name = canonical(rawText);
+      const taxonomyMatch = resolveTaxonomyTerm(rawText);
+      const name = taxonomyMatch?.name || canonical(rawText);
       const existing = skills.get(name);
       if (!existing || existing.proficiency < proficiency)
         skills.set(name, { rawText, proficiency, tag });
@@ -35,25 +37,39 @@ export function deterministicExtract(input: {
   add(input.secondary, 2, 'secondary');
   add(input.proficient, 3, 'proficient');
   add(input.primary, 4, 'primary');
-  for (const [canonicalName, meta] of skills)
+  for (const [canonicalName, meta] of skills) {
+    const taxonomyMatch = resolveTaxonomyTerm(meta.rawText);
     result.push({
       type: 'skill',
-      payload: { ...meta, canonicalName, ratingSource: 'inferred' },
-      confidence:
-        canonicalName ===
-        meta.rawText
-          .trim()
-          .replace(/\b\w/g, (c) => c.toUpperCase())
-          .replace(/[._-]/g, ' ')
-          ? 0.68
-          : 0.93,
+      payload: {
+        rawText: meta.rawText,
+        proficiency: meta.proficiency,
+        tag: meta.tag,
+        canonicalName,
+        taxonomyMatch: taxonomyMatch?.matchType || null,
+        ratingSource: 'inferred',
+      },
+      confidence: taxonomyMatch
+        ? taxonomyMatch.matchType === 'exact'
+          ? 0.99
+          : taxonomyMatch.matchType === 'alias'
+            ? 0.93
+            : 0.85
+        : 0.55,
     });
-  for (const raw of splitTerms(input.tools))
+  }
+  for (const raw of splitTerms(input.tools)) {
+    const taxonomyMatch = resolveTaxonomyTerm(raw);
     result.push({
       type: 'tool',
-      payload: { name: canonical(raw), rawText: raw },
-      confidence: 0.9,
+      payload: {
+        name: taxonomyMatch?.name || canonical(raw),
+        rawText: raw,
+        taxonomyMatch: taxonomyMatch?.matchType || null,
+      },
+      confidence: taxonomyMatch ? 0.99 : 0.55,
     });
+  }
   for (const raw of (input.projects || '')
     .split(/\n(?=\s*(?:[-•\d]|Project))/i)
     .map((x) => x.replace(/^[-•\d.)\s]+/, '').trim())

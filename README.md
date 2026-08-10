@@ -19,6 +19,8 @@ Production credentials and policy checkpoints are recorded in `docs/DECISIONS.md
 
 ## Production
 
-Production uses Microsoft Entra ID SSO and deploys to AWS ECS Fargate with an HTTPS load balancer, encrypted private RDS PostgreSQL, SES invitations, EventBridge scheduling and CloudWatch logs. See `infra/bootstrap.yaml`, `infra/production.yaml`, `.github/workflows/deploy-production.yml`, and `docs/RUNBOOK.md`.
+Azure is the approved and deployed hosting target in Central India. The footprint uses one always-warm Container Apps replica, ACR, private PostgreSQL Flexible Server, Key Vault, Log Analytics, and Azure Communication Services Email with a scheduled notification job. Start with `docs/AZURE_DEPLOYMENT.md`; its deployment script uses ACR remote builds, so local Docker is not required.
+
+The AWS CloudFormation and workflow files are retained only as legacy implementation history and must not be used for new deployments.
 
 Production fails closed when identity configuration is missing. Set `AUTH_DEV_BYPASS=true` only in a local non-production `.env`; it is ignored in production.

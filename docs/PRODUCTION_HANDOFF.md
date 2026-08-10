@@ -1,5 +1,7 @@
 # Production handoff checklist
 
+> Legacy AWS handoff draft. Azure is now the approved target; use `docs/AZURE_DEPLOYMENT.md` until this checklist is replaced after the first approved Azure deployment.
+
 ## Required owner inputs
 
 - AWS CLI/SSO profile authenticated to account `225201316330`.

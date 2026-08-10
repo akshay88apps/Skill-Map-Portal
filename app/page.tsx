@@ -1,164 +1,185 @@
 import Link from 'next/link';
-import { ArrowRight, Sparkles } from 'lucide-react';
-import { PageHeader, Stat } from '@/components/ui';
-import { db } from '@/lib/db';
+import { redirect } from 'next/navigation';
+import { Sparkles } from 'lucide-react';
+import { DashboardHeader } from '@/components/dashboard-header';
+import { Empty, PanelHeader, RoleBadge, Stat } from '@/components/ui';
 import { currentIdentity } from '@/lib/authz';
+import { loadDashboardData } from '@/lib/dashboard';
+
 export const dynamic = 'force-dynamic';
+
 export default async function Home() {
   const user = await currentIdentity();
-  const rows = user
-    ? await db.leader.findMany({
-        where: user.role === 'ADMIN' ? {} : { profileStatus: 'PUBLISHED' },
-        include: {
-          skills: { include: { skill: true } },
-          projects: true,
-          certifications: true,
-        },
-        take: 8,
-        orderBy: { updatedAt: 'desc' },
-      })
-    : [];
-  const demoLeaders = rows.map((row) => ({
-    ...row,
-    preferredName: row.preferredName || row.fullName,
-    department: row.department || 'Unassigned',
-    jobTitle: row.jobTitle || 'Leader',
-    experienceYearsEstimate: row.experienceYearsEstimate || 0,
-    leadershipBracketRaw: row.leadershipBracketRaw || '',
-    skills: row.skills.map(
-      (x) => [x.skill.name, x.proficiency, x.ratingSource] as const,
-    ),
-    projects: row.projects.length,
-    certs: row.certifications.length,
-    updatedAt: row.updatedAt.toISOString().slice(0, 10),
-  }));
-  const allSkills = [
-    ...new Set(demoLeaders.flatMap((l) => l.skills.map((s) => s[0]))),
-  ];
+  if (!user) redirect('/signin');
+
+  const dashboard = await loadDashboardData(user);
+  const currentLeader = dashboard.recentLeaders.find(
+    (leader) => leader.id === user.leaderId,
+  );
+  const displayName =
+    currentLeader?.preferredName ||
+    currentLeader?.fullName ||
+    user.name ||
+    user.email?.split('@')[0] ||
+    'there';
+  const topCapability = dashboard.capability[0];
+
   return (
     <>
-      <PageHeader
-        eyebrow="Monday, 3 August"
-        title="Good morning, leader."
-        description="A clear view of your organisation’s expertise, capability gaps, and momentum."
-        action={
-          <Link href="/directory" className="btn">
-            Explore people <ArrowRight size={16} className="ml-2" />
-          </Link>
-        }
-      />
-      <div className="space-y-8 p-6 lg:p-10">
+      <DashboardHeader name={displayName} />
+      <div className="page-shell space-y-6">
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <Stat
             label="Leader profiles"
-            value={demoLeaders.length}
-            detail="86% complete"
+            value={dashboard.leaderCount}
+            detail={`${dashboard.completionPercent}% complete`}
           />
           <Stat
             label="Canonical skills"
-            value={allSkills.length}
-            detail="Across 4 categories"
+            value={dashboard.canonicalSkillCount}
+            detail={
+              dashboard.categoryCount
+                ? `Across ${dashboard.categoryCount} ${dashboard.categoryCount === 1 ? 'category' : 'categories'}`
+                : 'No categories assigned'
+            }
           />
           <Stat
             label="Skills needing review"
-            value={3}
-            detail="AI confidence below 70%"
+            value={dashboard.skillsNeedingReview}
+            detail="Flagged for taxonomy review"
           />
           <Stat
             label="Quarterly growth"
-            value="+18%"
-            detail="Compared with Q1 2026"
+            value={dashboard.quarterlyGrowth.value}
+            detail={dashboard.quarterlyGrowth.detail}
           />
         </section>
+
         <section className="grid gap-6 xl:grid-cols-[1.35fr_.65fr]">
           <div className="card overflow-hidden">
-            <div className="flex items-center justify-between p-6">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-widest text-moss">
-                  Capability pulse
-                </p>
-                <h2 className="mt-1 text-xl font-bold">
-                  Skills across the organisation
-                </h2>
-              </div>
-              <Link href="/matrix" className="text-sm font-bold text-moss">
-                View matrix →
-              </Link>
-            </div>
+            <PanelHeader
+              eyebrow="Capability pulse"
+              title="Skills across the organisation"
+              action={
+                <Link href="/matrix" className="btn-ghost">
+                  View matrix →
+                </Link>
+              }
+            />
             <div className="space-y-5 px-6 pb-7">
-              {[
-                ['Azure', 82],
-                ['AI Strategy', 68],
-                ['Power Platform', 61],
-                ['Cloud Architecture', 55],
-                ['Data Engineering', 43],
-              ].map(([s, n]) => (
-                <div key={s}>
+              {dashboard.capability.map((skill) => (
+                <div key={skill.id}>
                   <div className="mb-2 flex justify-between text-sm">
-                    <span className="font-semibold">{s}</span>
-                    <span className="text-ink/45">{n}% coverage</span>
+                    <span className="font-semibold">{skill.name}</span>
+                    <span className="text-neutral-600">
+                      {skill.coveragePercent}% coverage
+                    </span>
                   </div>
-                  <div className="h-2 rounded-full bg-mint">
+                  <div className="progress-track">
                     <div
-                      className="h-2 rounded-full bg-moss"
-                      style={{ width: `${n}%` }}
+                      className="progress-value"
+                      style={{ width: `${skill.coveragePercent}%` }}
                     />
                   </div>
                 </div>
               ))}
+              {!dashboard.capability.length && (
+                <Empty
+                  compact
+                  title="No skill coverage yet"
+                  body="Add skills to leader profiles to populate this capability view."
+                  href="/my-profile"
+                  label="Add profile skills"
+                />
+              )}
             </div>
           </div>
-          <div className="card bg-forest p-7 text-white">
-            <Sparkles className="text-[#9fd9bd]" />
-            <p className="mt-7 text-xs font-bold uppercase tracking-widest text-[#9fd9bd]">
+
+          <div className="card insight-card p-7">
+            <Sparkles className="text-mint" aria-hidden="true" />
+            <p className="mt-7 text-xs font-semibold uppercase tracking-widest text-mint">
               Insight of the week
             </p>
-            <h2 className="mt-2 text-2xl font-bold">
-              AI capability is growing, but delivery depth is concentrated.
-            </h2>
-            <p className="mt-3 text-sm leading-6 text-white/65">
-              Three leaders hold most expert-level AI skills. Build resilience
-              by pairing them with emerging practitioners.
-            </p>
+            {topCapability ? (
+              <>
+                <h2 className="mt-2 text-2xl font-semibold text-neutral-50">
+                  {topCapability.name} has the broadest coverage.
+                </h2>
+                <p className="mt-3 text-sm leading-6 text-neutral-50/80">
+                  {topCapability.leaderCount} of {dashboard.leaderCount}{' '}
+                  visible leader profiles currently record this skill.
+                </p>
+              </>
+            ) : (
+              <>
+                <h2 className="mt-2 text-2xl font-semibold text-neutral-50">
+                  No insight yet
+                </h2>
+                <p className="mt-3 text-sm leading-6 text-neutral-50/80">
+                  Insights will appear after leader profiles contain skill
+                  data.
+                </p>
+              </>
+            )}
             <Link
-              href="/analytics"
-              className="mt-7 inline-flex font-bold text-[#9fd9bd]"
+              href={topCapability ? '/analytics' : '/my-profile'}
+              className="mt-7 inline-flex font-semibold text-mint underline-offset-4 hover:underline"
             >
-              Open analytics →
+              {topCapability ? 'Open analytics' : 'Add profile skills'} →
             </Link>
           </div>
         </section>
+
         <section>
           <div className="mb-4 flex justify-between">
-            <h2 className="text-xl font-bold">Recently updated</h2>
-            <Link href="/directory" className="text-sm font-bold text-moss">
+            <h2 className="text-xl font-semibold">Recently updated</h2>
+            <Link href="/directory" className="text-sm font-semibold text-moss">
               See everyone
             </Link>
           </div>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            {demoLeaders.map((l) => (
+            {dashboard.recentLeaders.map((leader) => (
               <Link
-                key={l.id}
-                href={`/directory/${l.id}`}
-                className="card p-5 transition hover:-translate-y-1"
+                key={leader.id}
+                href={`/directory/${leader.id}`}
+                className="card p-5 transition-colors hover:border-primary-300 hover:bg-primary-50 active:bg-primary-100"
               >
-                <div className="grid h-11 w-11 place-items-center rounded-xl bg-mint font-black text-forest">
-                  {l.fullName
+                <div className="grid h-10 w-10 place-items-center rounded-control bg-primary-100 font-semibold text-primary-900">
+                  {leader.fullName
                     .split(' ')
-                    .map((x) => x[0])
+                    .map((part) => part[0])
                     .join('')}
                 </div>
-                <h3 className="mt-4 font-bold">{l.fullName}</h3>
-                <p className="text-xs text-ink/50">{l.jobTitle}</p>
+                <h3 className="mt-4 font-semibold">{leader.fullName}</h3>
+                <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-neutral-600">
+                  <RoleBadge
+                    role={leader.id === user.leaderId ? user.role : leader.role}
+                  />
+                  {leader.jobTitle ? <span>{leader.jobTitle}</span> : null}
+                </p>
                 <div className="mt-4 flex flex-wrap gap-1">
-                  {l.skills.slice(0, 2).map((s) => (
-                    <span className="pill bg-cream text-forest" key={s[0]}>
-                      {s[0]}
+                  {leader.skills.slice(0, 2).map((rating) => (
+                    <span
+                      className="pill bg-cream text-forest"
+                      key={rating.id}
+                    >
+                      {rating.skill.name}
                     </span>
                   ))}
                 </div>
               </Link>
             ))}
+            {!dashboard.recentLeaders.length && (
+              <div className="md:col-span-2 xl:col-span-4">
+                <Empty
+                  compact
+                  title="No leader profiles yet"
+                  body="Published leader profiles will appear here after HR approval."
+                  href="/my-profile"
+                  label="Build your profile"
+                />
+              </div>
+            )}
           </div>
         </section>
       </div>

@@ -10,7 +10,7 @@ describe('explicit skill ratings', () => {
     expect(
       selfRatingInput.safeParse({
         email: 'leader@example.com',
-        skills: [{ name: 'Azure', proficiency }],
+        skills: [{ name: 'Azure Functions', proficiency }],
       }).success,
     ).toBe(true),
   );
@@ -18,10 +18,16 @@ describe('explicit skill ratings', () => {
     expect(
       selfRatingInput.safeParse({
         email: 'leader@example.com',
-        skills: [{ name: 'Azure', proficiency }],
+        skills: [{ name: 'Azure Functions', proficiency }],
       }).success,
     ).toBe(false),
   );
+  it('rejects arbitrary skill names outside the HR taxonomy', () =>
+    expect(
+      selfRatingInput.safeParse({
+        skills: [{ name: 'Uncontrolled Free Text', proficiency: 3 }],
+      }).success,
+    ).toBe(false));
 });
 describe('L&D gap confidence', () => {
   const ratings = [
@@ -63,12 +69,17 @@ describe('production profile contract', () => {
     expect(
       profileInput.safeParse({
         fullName: 'Test Leader',
-        ratedSkills: [{ name: 'Azure', proficiency: 4 }],
+        experience: '10 years 0 months',
+        ratedSkills: [{ name: 'Azure Functions', proficiency: 4 }],
       }).success,
     ).toBe(true));
   it('allows incomplete server-side drafts but still validates field limits', () => {
     expect(
-      profileDraftInput.safeParse({ projects: 'In progress' }).success,
+      profileDraftInput.safeParse({
+        projects: [
+          { name: '', description: 'In progress', techStack: [] },
+        ],
+      }).success,
     ).toBe(true);
     expect(profileDraftInput.safeParse({ fullName: 'x' }).success).toBe(false);
   });

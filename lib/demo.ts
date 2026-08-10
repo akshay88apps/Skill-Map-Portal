@@ -2,6 +2,7 @@ export type DemoSkill = readonly [
   string,
   number,
   'self_rated' | 'inferred' | 'demo',
+  string?,
 ];
 export const demoLeaders = [
   {
@@ -22,6 +23,7 @@ export const demoLeaders = [
     projects: 3,
     certs: 2,
     updatedAt: '2026-07-18',
+    additionalCapabilityTags: [] as string[],
   },
   {
     id: 'a2',
@@ -41,6 +43,7 @@ export const demoLeaders = [
     projects: 5,
     certs: 3,
     updatedAt: '2026-06-29',
+    additionalCapabilityTags: [] as string[],
   },
   {
     id: 'a3',
@@ -59,6 +62,7 @@ export const demoLeaders = [
     projects: 4,
     certs: 4,
     updatedAt: '2026-05-11',
+    additionalCapabilityTags: ['CUSTOMER_ENGINEERING'] as string[],
   },
   {
     id: 'a4',
@@ -77,6 +81,7 @@ export const demoLeaders = [
     projects: 6,
     certs: 1,
     updatedAt: '2026-04-02',
+    additionalCapabilityTags: ['PRODUCT_STRATEGY_VENTURE_STUDIO'] as string[],
   },
 ];
 export const allSkills = [

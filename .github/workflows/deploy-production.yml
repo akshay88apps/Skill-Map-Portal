@@ -1,6 +1,15 @@
-name: Deploy production
-on: { workflow_dispatch: {}, push: { branches: [main], tags: ['production-*'] } }
-permissions: { id-token: write, contents: read }
+name: Deploy Azure production
+
+on:
+  workflow_dispatch: {}
+  push:
+    tags:
+      - 'production-*'
+
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   verify-build-deploy:
     runs-on: ubuntu-latest
@@ -8,22 +17,29 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: 20, cache: npm }
+        with:
+          node-version: 22
+          cache: npm
       - run: npm ci
+      - run: npm run lint
       - run: npm test
       - run: npm run build
-      - uses: aws-actions/configure-aws-credentials@v4
-        with: { role-to-assume: '${{ secrets.AWS_DEPLOY_ROLE_ARN }}', aws-region: '${{ vars.AWS_REGION }}' }
-      - uses: aws-actions/amazon-ecr-login@v2
-      - name: Build and push immutable image
-        env: { ECR_REPOSITORY: '${{ vars.ECR_REPOSITORY }}' }
-        run: |
-          ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
-          IMAGE="$ACCOUNT.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com/$ECR_REPOSITORY:${GITHUB_SHA}"
-          docker build -t "$IMAGE" .
-          docker push "$IMAGE"
-          echo "IMAGE_URI=$IMAGE" >> "$GITHUB_ENV"
-      - name: Deploy CloudFormation
-        run: |
-          aws cloudformation deploy --stack-name skillmap-production --template-file infra/production.yaml --capabilities CAPABILITY_IAM --no-fail-on-empty-changeset \
-            --parameter-overrides ImageUri="$IMAGE_URI" CertificateArn="${{ secrets.ACM_CERTIFICATE_ARN }}" DatabasePassword="${{ secrets.DATABASE_PASSWORD }}" AuthSecret="${{ secrets.AUTH_SECRET }}" EntraClientId="${{ secrets.ENTRA_CLIENT_ID }}" EntraClientSecret="${{ secrets.ENTRA_CLIENT_SECRET }}" EntraIssuer="${{ secrets.ENTRA_ISSUER }}" AdminGroupId="${{ secrets.ENTRA_ADMIN_GROUP_ID }}" LeaderGroupId="${{ secrets.ENTRA_LEADER_GROUP_ID }}" AppBaseUrl="${{ vars.APP_BASE_URL }}" SesFromEmail="${{ vars.SES_FROM_EMAIL }}" CronSecret="${{ secrets.CRON_SECRET }}"
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Deploy to Azure Container Apps
+        env:
+          AZURE_POSTGRES_ADMIN_PASSWORD: ${{ secrets.AZURE_POSTGRES_ADMIN_PASSWORD }}
+          AZURE_AUTH_SECRET: ${{ secrets.AZURE_AUTH_SECRET }}
+          AZURE_ENTRA_CLIENT_ID: ${{ secrets.AZURE_ENTRA_CLIENT_ID }}
+          AZURE_ENTRA_CLIENT_SECRET: ${{ secrets.AZURE_ENTRA_CLIENT_SECRET }}
+          AZURE_ENTRA_ISSUER: ${{ secrets.AZURE_ENTRA_ISSUER }}
+          AZURE_ADMIN_GROUP_ID: ${{ secrets.AZURE_ADMIN_GROUP_ID }}
+          AZURE_LEADER_GROUP_ID: ${{ secrets.AZURE_LEADER_GROUP_ID }}
+          AZURE_CRON_SECRET: ${{ secrets.AZURE_CRON_SECRET }}
+          AZURE_DEPLOY_LOCATION: centralindia
+          AZURE_DEPLOY_ENVIRONMENT: dev
+          AZURE_RESOURCE_GROUP: rg-skillmap-dev
+        run: npm run deploy:azure

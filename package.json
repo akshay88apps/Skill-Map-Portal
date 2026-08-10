@@ -12,11 +12,14 @@
     "test:e2e": "playwright test",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
-    "import:xlsx": "tsx scripts/import-xlsx.ts"
+    "import:xlsx": "tsx scripts/import-xlsx.ts",
+    "deploy:azure": "sh scripts/deploy-azure.sh"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.7.4",
-    "@aws-sdk/client-sesv2": "^3.1101.0",
+    "@azure/communication-email": "^1.1.0",
+    "@azure/identity": "^4.13.1",
+    "@azure/storage-blob": "^12.33.0",
     "@prisma/client": "^5.22.0",
     "@tanstack/react-table": "^8.20.5",
     "bcryptjs": "^2.4.3",
@@ -49,11 +52,12 @@
     "tailwindcss": "^3.4.17",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
-    "vitest": "^2.1.8"
+    "vitest": "^4.1.10"
   },
   "overrides": {
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.4",
+    "nanoid": "3.3.18",
     "postcss": "8.5.25",
     "sharp": "0.35.3",
     "uuid": "11.1.1"

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { canonical } from '@/lib/normalization';
 import { selfRatingInput } from '@/lib/validation';
 import { requireIdentity } from '@/lib/authz';
 export async function POST(req: NextRequest) {
@@ -29,11 +28,8 @@ export async function POST(req: NextRequest) {
     );
   await db.$transaction(async (tx) => {
     for (const { name, proficiency } of parsed.data.skills) {
-      const canonicalName = canonical(name);
-      const skill = await tx.skill.upsert({
-        where: { name: canonicalName },
-        update: {},
-        create: { name: canonicalName },
+      const skill = await tx.skill.findUniqueOrThrow({
+        where: { name },
       });
       await tx.leaderSkill.upsert({
         where: {

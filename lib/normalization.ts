@@ -1,5 +1,10 @@
+import { resolveTaxonomyTerm } from '@/lib/taxonomy';
+import { parseExperienceDuration } from '@/lib/experience';
+
 export function normalizeExperience(value?: string | null) {
   if (!value?.trim()) return null;
+  const duration = parseExperienceDuration(value);
+  if (duration) return duration.years + duration.months / 12;
   const nums = value.match(/\d+(?:\.\d+)?/g)?.map(Number) ?? [];
   if (!nums.length) return null;
   if (nums.length > 1) return (nums[0] + nums[1]) / 2;
@@ -21,19 +26,21 @@ export function validCert(value: string) {
   return value.length > 1 && !junk.test(value.trim());
 }
 export function canonical(value: string) {
+  const taxonomyMatch = resolveTaxonomyTerm(value);
+  if (taxonomyMatch) return taxonomyMatch.name;
   const v = value
     .trim()
     .toLowerCase()
     .replace(/[._-]/g, ' ')
     .replace(/\s+/g, ' ');
   const aliases: Record<string, string> = {
-    'ms dynamics': 'Microsoft Dynamics 365',
-    'ms dynamics crm': 'Microsoft Dynamics 365',
-    'ms crm': 'Microsoft Dynamics 365',
+    'ms dynamics': 'Microsoft Dynamics 365 CRM',
+    'ms dynamics crm': 'Microsoft Dynamics 365 CRM',
+    'ms crm': 'Microsoft Dynamics 365 CRM',
     powerbi: 'Power BI',
     'power bi': 'Power BI',
     'node js': 'Node.js',
-    'react js': 'React',
+    'react js': 'React.js',
   };
   return aliases[v] ?? v.replace(/\b\w/g, (c) => c.toUpperCase());
 }

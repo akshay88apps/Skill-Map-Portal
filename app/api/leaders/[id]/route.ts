@@ -22,7 +22,15 @@ export async function GET(
       skills: { include: { skill: true } },
       tools: { include: { tool: true } },
       projects: true,
-      certifications: true,
+      certifications: {
+        select: {
+          id: true,
+          name: true,
+          attachmentFileName: true,
+          attachmentContentType: true,
+          attachmentBlobName: true,
+        },
+      },
       snapshots: true,
     },
   });

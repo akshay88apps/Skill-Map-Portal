@@ -1,3 +1,48 @@
-import { test,expect } from '@playwright/test';
-test('leader can discover expertise',async({page})=>{await page.goto('/directory');await page.getByLabel('Search leaders').fill('Azure');await expect(page.getByText('Aarav Sharma')).toBeVisible();await page.getByText('Aarav Sharma').click();await expect(page.getByText('Capability profile')).toBeVisible()});
-test('profile wizard captures explicit skill ratings',async({page})=>{await page.goto('/my-profile');await page.getByPlaceholder('Your legal or full name').fill('Test Leader');await page.getByText('Skills & tools').click();await page.getByLabel('Skill 1').fill('Azure');await page.getByLabel('Proficiency for skill 1').selectOption('4');await expect(page.getByLabel('Proficiency for skill 1')).toHaveValue('4')});
+import { expect, test } from '@playwright/test';
+
+test('leader can discover expertise', async ({ page }) => {
+  await page.goto('/directory');
+  await page.getByLabel('Search leaders').fill('TypeScript');
+  await expect(page.getByText('Aarav Sharma')).toBeVisible();
+  await page.getByText('Aarav Sharma').click();
+  await expect(page.getByText('Capability profile')).toBeVisible();
+});
+
+test('profile wizard captures a taxonomy skill and explicit rating', async ({
+  page,
+}) => {
+  await page.goto('/my-profile');
+  await page.getByPlaceholder('Your legal or full name').fill('Test Leader');
+  await page.getByRole('button', { name: /Skills$/ }).click();
+
+  const skill = page.getByRole('combobox', {
+    name: 'Skill 1',
+    exact: true,
+  });
+  await skill.fill('Azure Functions');
+  await page.getByRole('option', { name: 'Azure Functions', exact: true }).click();
+  await expect(skill).toHaveValue('Azure Functions');
+
+  const proficiency = page.getByLabel('Proficiency for skill 1');
+  await proficiency.selectOption('4');
+  await expect(proficiency).toHaveValue('4');
+});
+
+test('profile wizard captures repeatable certification evidence', async ({
+  page,
+}) => {
+  await page.goto('/my-profile');
+  await page.getByRole('button', { name: /Certifications$/ }).click();
+  await page.getByRole('button', { name: 'Add certification' }).click();
+  await page
+    .getByLabel('Certification name')
+    .fill('Azure Solutions Architect');
+  await page.getByLabel('Upload certificate file 1').setInputFiles({
+    name: 'azure-certificate.png',
+    mimeType: 'image/png',
+    buffer: Buffer.from('certificate-preview'),
+  });
+
+  await expect(page.getByText('azure-certificate.png')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Continue' })).toBeEnabled();
+});

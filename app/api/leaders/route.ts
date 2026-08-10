@@ -3,6 +3,10 @@ import { db } from '@/lib/db';
 import { leaderInput } from '@/lib/validation';
 import { normalizeExperience } from '@/lib/normalization';
 import { currentIdentity, requireAdmin } from '@/lib/authz';
+import {
+  categoriesForCapability,
+  manualTagForCapability,
+} from '@/lib/capabilities';
 export async function GET(req: NextRequest) {
   const user = await currentIdentity();
   if (!user)
@@ -19,6 +23,29 @@ export async function GET(req: NextRequest) {
         skill: { name: { contains: s.get('skill')!, mode: 'insensitive' } },
       },
     };
+  if (s.get('capability')) {
+    const capability = s.get('capability')!;
+    const categories = categoriesForCapability(capability);
+    const manualTag = manualTagForCapability(capability);
+    where.AND = [
+      {
+        OR: [
+          ...(categories.length
+            ? [
+                {
+                  skills: {
+                    some: { skill: { category: { in: categories } } },
+                  },
+                },
+              ]
+            : []),
+          ...(manualTag
+            ? [{ additionalCapabilityTags: { has: manualTag } }]
+            : []),
+        ],
+      },
+    ];
+  }
   if (s.get('q'))
     where.OR = ['fullName', 'preferredName', 'jobTitle'].map((k) => ({
       [k]: { contains: s.get('q')!, mode: 'insensitive' },
@@ -32,7 +59,7 @@ export async function GET(req: NextRequest) {
       include: {
         skills: { include: { skill: true } },
         projects: true,
-        certifications: true,
+        certifications: { select: { id: true, name: true } },
       },
       skip: (page - 1) * size,
       take: size,
