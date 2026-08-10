@@ -40,6 +40,6 @@ jobs:
           AZURE_LEADER_GROUP_ID: ${{ secrets.AZURE_LEADER_GROUP_ID }}
           AZURE_CRON_SECRET: ${{ secrets.AZURE_CRON_SECRET }}
           AZURE_DEPLOY_LOCATION: centralindia
-          AZURE_DEPLOY_ENVIRONMENT: dev
-          AZURE_RESOURCE_GROUP: rg-skillmap-dev
+          AZURE_DEPLOY_ENVIRONMENT: prod
+          AZURE_RESOURCE_GROUP: rg-skillmap-prod
         run: npm run deploy:azure

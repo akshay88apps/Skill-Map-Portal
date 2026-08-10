@@ -3,7 +3,7 @@ targetScope = 'resourceGroup'
 @description('Deployment environment name used for tags and resource naming.')
 @minLength(2)
 @maxLength(12)
-param environmentName string = 'dev'
+param environmentName string = 'prod'
 
 @description('Azure region for all resources.')
 param location string = resourceGroup().location
@@ -392,7 +392,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
   properties: {
     environmentId: containerEnvironment.id
     configuration: {
-      activeRevisionsMode: 'Single'
+      activeRevisionsMode: 'Multiple'
       ingress: {
         external: true
         targetPort: 3000
@@ -593,6 +593,7 @@ resource notificationJob 'Microsoft.App/jobs@2024-03-01' = {
 }
 
 output containerAppName string = containerApp.name
+output containerAppEnvironmentName string = containerEnvironment.name
 output notificationJobName string = notificationJob.name
 output containerRegistryName string = registry.name
 output containerRegistryLoginServer string = registry.properties.loginServer
@@ -605,3 +606,6 @@ output communicationServiceName string = communicationService.name
 output emailSenderAddress string = 'DoNotReply@${emailDomain.properties.fromSenderDomain}'
 output storageAccountName string = storage.name
 output certificationsContainerName string = certificationsContainerName
+output managedIdentityName string = identity.name
+output managedIdentityPrincipalId string = identity.properties.principalId
+output customDomainVerificationId string = containerApp.properties.customDomainVerificationId
