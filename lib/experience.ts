@@ -17,6 +17,10 @@ export function formatExperienceDuration(years: number, months: number) {
   return `${years} ${years === 1 ? 'year' : 'years'} ${months} ${months === 1 ? 'month' : 'months'}`;
 }
 
+export function formatExperienceYearsEstimate(value?: number | null) {
+  return Number.isFinite(value) ? Number(value).toFixed(1) : '0.0';
+}
+
 export function canonicalExperienceDuration(value?: string | null) {
   const parsed = parseExperienceDuration(value);
   if (parsed) return formatExperienceDuration(parsed.years, parsed.months);

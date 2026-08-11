@@ -8,6 +8,7 @@ import {
   capabilityNames,
   capabilitiesForLeader,
 } from '@/lib/capabilities';
+import { formatExperienceYearsEstimate } from '@/lib/experience';
 export default function Directory() {
   const { leaders, loading } = useLiveLeaders();
   const [q, setQ] = useState('');
@@ -122,7 +123,12 @@ export default function Directory() {
               </div>
               <div className="mt-5 flex gap-5 text-xs text-neutral-600">
                 <span>
-                  <b className="text-ink">{l.experienceYearsEstimate}</b> yrs
+                  <b className="text-ink">
+                    {formatExperienceYearsEstimate(
+                      l.experienceYearsEstimate,
+                    )}
+                  </b>{' '}
+                  yrs
                   experience
                 </span>
                 <span>

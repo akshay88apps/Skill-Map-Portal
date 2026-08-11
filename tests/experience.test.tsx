@@ -3,11 +3,17 @@ import { describe, expect, it, vi } from 'vitest';
 import { ExperienceDurationField } from '@/app/my-profile/page';
 import {
   canonicalExperienceDuration,
+  formatExperienceYearsEstimate,
   isExperienceDuration,
 } from '@/lib/experience';
 import { profileInput } from '@/lib/validation';
 
 describe('total relevant experience', () => {
+  it('formats estimated years to one decimal place for directory displays', () => {
+    expect(formatExperienceYearsEstimate(16.3333333333333)).toBe('16.3');
+    expect(formatExperienceYearsEstimate(16)).toBe('16.0');
+  });
+
   it('renders mandatory year and month ranges and emits a canonical value', () => {
     const onChange = vi.fn();
     render(<ExperienceDurationField onChange={onChange} />);

@@ -8,6 +8,7 @@ import {
   careerTimeframeLabel,
   proficiencyComparison,
 } from '@/lib/career-aspiration';
+import { formatExperienceYearsEstimate } from '@/lib/experience';
 export const dynamic = 'force-dynamic';
 export default async function Profile(props: {
   params: Promise<{ id: string }>;
@@ -302,7 +303,12 @@ export default async function Profile(props: {
               <p className="flex items-center gap-3">
                 <Briefcase className="text-moss" size={18} />
                 <span>
-                  <b>{l.experienceYearsEstimate} years</b>
+                  <b>
+                    {formatExperienceYearsEstimate(
+                      l.experienceYearsEstimate,
+                    )}{' '}
+                    years
+                  </b>
                   <br />
                   <span className="text-xs text-neutral-600">
                     Relevant experience
